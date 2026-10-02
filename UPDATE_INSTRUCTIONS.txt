@@ -1,0 +1,29 @@
+MULTIMODAL RESUME ANALYZER — EMAIL LOGIN FIX
+
+This update allows Supabase's full 6–10 digit email codes, including 8 digits.
+Local demo OTPs remain 6 digits. Supabase still validates every cloud code.
+
+INSTALL ON YOUR EXISTING PROJECT:
+1. Stop Flask using Ctrl+C.
+2. Back up your project folder using File Explorer.
+3. Extract Multimodal_Resume_Analyzer_Email_Fix.zip into the existing folder
+   containing app.py. Replace the included files when Windows asks.
+4. The updated auth.py must sit beside app.py. verify.html belongs in templates.
+   Do not extract into venv312 or add an extra nested folder.
+5. No dependency installation or SQL changes are needed. From VS Code run:
+
+.\venv312\Scripts\python.exe check_setup.py
+.\venv312\Scripts\python.exe app.py
+
+6. Open http://127.0.0.1:5000/login and reload with Ctrl+F5.
+7. Request a new OTP and enter its ENTIRE code, including any leading zeros.
+
+The ZIP does not contain .env, databases, tokens, secret keys or a venv.
+Your existing configuration and history files are not replaced.
+
+To switch the Gmail account sending OTPs, change Sender email, Username,
+and the NEW account's app password together in Supabase SMTP Settings.
+See docs/EMAIL_LOGIN_FIX.md for full steps and spam-folder guidance.
+
+Test result: 31 automated checks passed. Live sending and inbox placement
+must be verified using your own Supabase project and Gmail configuration.

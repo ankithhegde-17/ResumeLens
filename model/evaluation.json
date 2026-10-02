@@ -1,0 +1,153 @@
+{
+  "version": "role-tfidf-v1",
+  "trained_at": "2026-09-30T18:23:41.097913+00:00",
+  "sklearn_version": "1.7.2",
+  "train_count": 72,
+  "test_count": 24,
+  "accuracy": 0.875,
+  "macro_f1": 0.8726190476190476,
+  "labels": [
+    "cloud-support",
+    "data-analyst",
+    "frontend",
+    "ml-intern",
+    "python-backend",
+    "qa-engineer",
+    "security",
+    "ui-ux"
+  ],
+  "per_class": {
+    "cloud-support": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 3.0
+    },
+    "data-analyst": {
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1-score": 0.8571428571428571,
+      "support": 3.0
+    },
+    "frontend": {
+      "precision": 1.0,
+      "recall": 0.6666666666666666,
+      "f1-score": 0.8,
+      "support": 3.0
+    },
+    "ml-intern": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 3.0
+    },
+    "python-backend": {
+      "precision": 0.6666666666666666,
+      "recall": 0.6666666666666666,
+      "f1-score": 0.6666666666666666,
+      "support": 3.0
+    },
+    "qa-engineer": {
+      "precision": 1.0,
+      "recall": 0.6666666666666666,
+      "f1-score": 0.8,
+      "support": 3.0
+    },
+    "security": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 3.0
+    },
+    "ui-ux": {
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1-score": 0.8571428571428571,
+      "support": 3.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      3,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      3,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      2,
+      0,
+      0,
+      0,
+      0,
+      1
+    ],
+    [
+      0,
+      0,
+      0,
+      3,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      1,
+      0,
+      0,
+      2,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      1,
+      2,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      3,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      3
+    ]
+  ],
+  "dataset_sha256": "4d5e610ac995a2531076e4e1c0b9ef177d2f74f86f62600a8eca47e4359b70e2",
+  "dataset_note": "96 fictional skill-profile examples, authored for this mini project; 72 train and 24 held-out scenarios. No real candidate or employer data. Generalization is unproven."
+}

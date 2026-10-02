@@ -1,0 +1,56 @@
+{
+  "sample_resume.pdf": [
+    "Python",
+    "SQL",
+    "Pandas",
+    "Excel",
+    "Power BI",
+    "Git",
+    "Data Visualization",
+    "Communication"
+  ],
+  "sample_resume.png": [
+    "Python",
+    "SQL",
+    "Pandas",
+    "Excel",
+    "Power BI",
+    "Git",
+    "Data Visualization",
+    "Communication"
+  ],
+  "sample_phone_photo.jpg": [
+    "Python",
+    "SQL",
+    "Pandas",
+    "Excel",
+    "Power BI",
+    "Git",
+    "Data Visualization",
+    "Communication"
+  ],
+  "sample_scanned_resume.pdf": [
+    "Python",
+    "SQL",
+    "Pandas",
+    "Excel",
+    "Power BI",
+    "Git",
+    "Data Visualization",
+    "Communication"
+  ],
+  "sample_resume_v2.pdf": [
+    "Python",
+    "SQL",
+    "Pandas",
+    "Excel",
+    "Power BI",
+    "Git",
+    "Data Visualization",
+    "Communication",
+    "NumPy",
+    "Scikit-learn",
+    "Machine Learning",
+    "Statistics"
+  ]
+}

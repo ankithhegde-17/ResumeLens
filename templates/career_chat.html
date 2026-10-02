@@ -1,0 +1,15 @@
+<section id="career-ai-panel" class="career-ai-panel" role="dialog" aria-modal="false" aria-labelledby="career-ai-title" hidden>
+  <header class="career-ai-header"><div><strong id="career-ai-title">R. Career AI</strong><small>Powered by Google Gemini</small></div><button type="button" class="career-ai-close" aria-label="Close Career AI">{{ icon('close') }}</button></header>
+  <div class="career-ai-messages" role="log" aria-live="polite" aria-relevant="additions" tabindex="0"><p class="ai-message">Ask about resumes, skills, projects or learning paths. Curated resource questions are answered locally.</p></div>
+  <div class="career-ai-quick">{% for prompt in (['Explain this roadmap','What should I learn first?','Suggest beginner projects','How long could this roadmap take?'] if career is defined and career else ['Improve my resume','Explain my skill gaps','What should I learn next?','Build my career roadmap','Suggest projects','Prepare me for an internship','Improve my LinkedIn profile','Help me prepare for interviews']) %}<button type="button" class="ai-prompt">{{ prompt }}</button>{% endfor %}</div>
+  <form id="career-ai-form" action="{{ url_for('career_chat') }}" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="career" value="{{ career.slug if career is defined and career else '' }}">
+    <input type="hidden" name="analysis" value="{{ record.id if record is defined and record else '' }}">
+    <input type="hidden" name="consent" value="yes">
+    <label class="sr-only" for="career-ai-input">Your career question</label>
+    <textarea id="career-ai-input" name="message" maxlength="1200" rows="2" placeholder="Ask a career question…" required></textarea>
+    <div class="career-ai-controls"><button class="button primary" type="submit">Send</button><button class="button secondary ai-new" type="button">New chat</button><button class="button secondary ai-retry" type="button" hidden>Retry</button></div>
+    <p class="ai-status small muted" role="status"></p>
+  </form>
+</section>

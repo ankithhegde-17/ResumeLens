@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% from 'components.html' import brand with context %}
+{% block title %}Verify email{% endblock %}
+{% block content %}
+<section class="verify-card">
+  {{ brand('login', dark=true) }}
+  <div class="eyebrow">ONE LAST STEP</div>
+  <h1>Enter your sign-in code</h1>
+  <p>For <strong>{{ email }}</strong></p>
+  <p class="muted">{{ 'Check your inbox and spam folder.' if mode == 'supabase' else 'Check the terminal running python app.py. No email is sent in demo mode.' }}</p>
+  <form method="post" class="form-stack" data-loading="Verifying your sign-in code…">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="code">Sign-in code</label>
+    <input class="otp-input" id="code" name="code" type="text" inputmode="numeric"
+           pattern="{{ '[0-9]{6,10}' if mode == 'supabase' else '[0-9]{6}' }}"
+           minlength="6" maxlength="{{ 10 if mode == 'supabase' else 6 }}"
+           autocomplete="one-time-code" aria-describedby="code-hint" required autofocus>
+    <p class="field-hint" id="code-hint">{{ 'Enter all digits from the latest email (6–10 digits). An eight-digit code is supported.' if mode == 'supabase' else 'Enter the six-digit code printed in your VS Code terminal.' }}</p>
+    <button class="button primary" type="submit">Open my workspace →</button>
+    <p class="loading-message" hidden role="status"></p>
+  </form>
+  <a class="subtle-link" href="{{ url_for('login') }}">Use another email or request a new code</a>
+</section>
+{% endblock %}

@@ -1,0 +1,118 @@
+{
+  "engine": "PDF text + RapidOCR",
+  "note": "Five controlled fictional sample files; not an independent real-world benchmark. VLM has not been evaluated unless this report explicitly lists that engine.",
+  "samples": [
+    {
+      "file": "sample_resume.pdf",
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "found": [
+        "Communication",
+        "Data Visualization",
+        "Excel",
+        "Git",
+        "Pandas",
+        "Power BI",
+        "Python",
+        "SQL"
+      ],
+      "missed": [],
+      "extra": [],
+      "engines": [
+        "PDF text"
+      ]
+    },
+    {
+      "file": "sample_resume.png",
+      "precision": 1.0,
+      "recall": 0.75,
+      "f1": 0.8571428571428571,
+      "found": [
+        "Communication",
+        "Excel",
+        "Git",
+        "Pandas",
+        "Python",
+        "SQL"
+      ],
+      "missed": [
+        "Data Visualization",
+        "Power BI"
+      ],
+      "extra": [],
+      "engines": [
+        "RapidOCR"
+      ]
+    },
+    {
+      "file": "sample_phone_photo.jpg",
+      "precision": 1.0,
+      "recall": 0.75,
+      "f1": 0.8571428571428571,
+      "found": [
+        "Communication",
+        "Excel",
+        "Git",
+        "Pandas",
+        "Python",
+        "SQL"
+      ],
+      "missed": [
+        "Data Visualization",
+        "Power BI"
+      ],
+      "extra": [],
+      "engines": [
+        "RapidOCR"
+      ]
+    },
+    {
+      "file": "sample_scanned_resume.pdf",
+      "precision": 1.0,
+      "recall": 0.75,
+      "f1": 0.8571428571428571,
+      "found": [
+        "Communication",
+        "Excel",
+        "Git",
+        "Pandas",
+        "Python",
+        "SQL"
+      ],
+      "missed": [
+        "Data Visualization",
+        "Power BI"
+      ],
+      "extra": [],
+      "engines": [
+        "RapidOCR"
+      ]
+    },
+    {
+      "file": "sample_resume_v2.pdf",
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "found": [
+        "Communication",
+        "Data Visualization",
+        "Excel",
+        "Git",
+        "Machine Learning",
+        "NumPy",
+        "Pandas",
+        "Power BI",
+        "Python",
+        "SQL",
+        "Scikit-learn",
+        "Statistics"
+      ],
+      "missed": [],
+      "extra": [],
+      "engines": [
+        "PDF text"
+      ]
+    }
+  ]
+}

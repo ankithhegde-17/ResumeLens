@@ -1,0 +1,410 @@
+{
+  "version": "2026.09-v1",
+  "scope": "Eight educational entry-level role profiles; not current vacancies.",
+  "roles": [
+    {
+      "id": "python-backend",
+      "title": "Python Backend Developer",
+      "description": "Build APIs and reliable server-side applications.",
+      "required": [
+        {
+          "skill": "Python",
+          "weight": 3
+        },
+        {
+          "skill": "SQL",
+          "weight": 2
+        },
+        {
+          "skill": "Flask",
+          "weight": 2
+        },
+        {
+          "skill": "REST API",
+          "weight": 2
+        },
+        {
+          "skill": "Git",
+          "weight": 1
+        }
+      ],
+      "optional": [
+        "Docker",
+        "Testing"
+      ],
+      "project": "Build a Flask API with PostgreSQL, input validation and automated tests."
+    },
+    {
+      "id": "frontend",
+      "title": "Frontend Developer",
+      "description": "Create responsive and accessible web interfaces.",
+      "required": [
+        {
+          "skill": "HTML",
+          "weight": 2
+        },
+        {
+          "skill": "CSS",
+          "weight": 2
+        },
+        {
+          "skill": "JavaScript",
+          "weight": 3
+        },
+        {
+          "skill": "React",
+          "weight": 2
+        },
+        {
+          "skill": "Git",
+          "weight": 1
+        }
+      ],
+      "optional": [
+        "TypeScript",
+        "UI/UX"
+      ],
+      "project": "Build a responsive React dashboard with forms, API calls and keyboard navigation."
+    },
+    {
+      "id": "data-analyst",
+      "title": "Data Analyst",
+      "description": "Turn raw data into reports that support decisions.",
+      "required": [
+        {
+          "skill": "SQL",
+          "weight": 3
+        },
+        {
+          "skill": "Excel",
+          "weight": 2
+        },
+        {
+          "skill": "Python",
+          "weight": 2
+        },
+        {
+          "skill": "Pandas",
+          "weight": 2
+        },
+        {
+          "skill": "Data Visualization",
+          "weight": 1
+        }
+      ],
+      "optional": [
+        "Power BI",
+        "Statistics"
+      ],
+      "project": "Analyze a public dataset, write SQL queries and present a dashboard with conclusions."
+    },
+    {
+      "id": "ml-intern",
+      "title": "Machine Learning Intern",
+      "description": "Prepare data and evaluate simple predictive models.",
+      "required": [
+        {
+          "skill": "Python",
+          "weight": 3
+        },
+        {
+          "skill": "Machine Learning",
+          "weight": 3
+        },
+        {
+          "skill": "Scikit-learn",
+          "weight": 2
+        },
+        {
+          "skill": "NumPy",
+          "weight": 1
+        },
+        {
+          "skill": "Statistics",
+          "weight": 1
+        }
+      ],
+      "optional": [
+        "Pandas",
+        "PyTorch"
+      ],
+      "project": "Train a classifier on a public dataset with separate test data and a confusion matrix."
+    },
+    {
+      "id": "qa-engineer",
+      "title": "QA Engineer",
+      "description": "Test software and document reproducible defects.",
+      "required": [
+        {
+          "skill": "Testing",
+          "weight": 3
+        },
+        {
+          "skill": "Selenium",
+          "weight": 2
+        },
+        {
+          "skill": "Postman",
+          "weight": 2
+        },
+        {
+          "skill": "Python",
+          "weight": 2
+        },
+        {
+          "skill": "Git",
+          "weight": 1
+        }
+      ],
+      "optional": [
+        "SQL",
+        "Agile"
+      ],
+      "project": "Create a test plan, automate browser tests and test a REST API with Postman."
+    },
+    {
+      "id": "cloud-support",
+      "title": "Cloud Support Associate",
+      "description": "Support cloud services and troubleshoot systems.",
+      "required": [
+        {
+          "skill": "Linux",
+          "weight": 3
+        },
+        {
+          "skill": "AWS",
+          "weight": 3
+        },
+        {
+          "skill": "Networking",
+          "weight": 2
+        },
+        {
+          "skill": "Docker",
+          "weight": 1
+        },
+        {
+          "skill": "Python",
+          "weight": 1
+        }
+      ],
+      "optional": [
+        "Git",
+        "Communication"
+      ],
+      "project": "Deploy a small containerized application and document networking and log troubleshooting."
+    },
+    {
+      "id": "ui-ux",
+      "title": "UI/UX Designer",
+      "description": "Design interfaces based on user needs.",
+      "required": [
+        {
+          "skill": "Figma",
+          "weight": 3
+        },
+        {
+          "skill": "UI/UX",
+          "weight": 3
+        },
+        {
+          "skill": "Prototyping",
+          "weight": 2
+        },
+        {
+          "skill": "User Research",
+          "weight": 2
+        }
+      ],
+      "optional": [
+        "HTML",
+        "CSS"
+      ],
+      "project": "Interview three users, build wireframes in Figma and run a usability test."
+    },
+    {
+      "id": "security",
+      "title": "Cybersecurity Analyst",
+      "description": "Understand network security and inspect incident evidence.",
+      "required": [
+        {
+          "skill": "Cybersecurity",
+          "weight": 3
+        },
+        {
+          "skill": "Networking",
+          "weight": 2
+        },
+        {
+          "skill": "Linux",
+          "weight": 2
+        },
+        {
+          "skill": "Wireshark",
+          "weight": 2
+        },
+        {
+          "skill": "SIEM",
+          "weight": 1
+        }
+      ],
+      "optional": [
+        "Python",
+        "Communication"
+      ],
+      "project": "Use an authorized local lab to inspect network traffic and create an incident report."
+    }
+  ],
+  "learning": {
+    "Python": {
+      "step": "Learn variables, functions and file handling.",
+      "practice": "Build a small CSV data-cleaning script.",
+      "url": "https://docs.python.org/3/tutorial/"
+    },
+    "SQL": {
+      "step": "Learn SELECT, JOIN, GROUP BY and filters.",
+      "practice": "Write five queries on a student-project database.",
+      "url": "https://www.postgresql.org/docs/current/tutorial-sql.html"
+    },
+    "Flask": {
+      "step": "Learn routes, templates and request validation.",
+      "practice": "Build a three-route web application.",
+      "url": "https://flask.palletsprojects.com/en/stable/tutorial/"
+    },
+    "REST API": {
+      "step": "Learn HTTP methods, status codes and JSON.",
+      "practice": "Create and test a small CRUD API.",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP"
+    },
+    "Git": {
+      "step": "Learn commits, branches and merging.",
+      "practice": "Keep a project in Git with meaningful commits.",
+      "url": "https://git-scm.com/book/en/v2"
+    },
+    "HTML": {
+      "step": "Learn semantic structure, forms and labels.",
+      "practice": "Create an accessible resume page.",
+      "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Structuring_content"
+    },
+    "CSS": {
+      "step": "Learn spacing, Flexbox, Grid and responsive rules.",
+      "practice": "Style a page for mobile and desktop.",
+      "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Styling_basics"
+    },
+    "JavaScript": {
+      "step": "Learn functions, arrays, events and fetch.",
+      "practice": "Add validation and API fetching to a page.",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide"
+    },
+    "React": {
+      "step": "Learn components, props, state and effects.",
+      "practice": "Build a searchable role list.",
+      "url": "https://react.dev/learn"
+    },
+    "Excel": {
+      "step": "Practice formulas, filters and pivot tables.",
+      "practice": "Summarize a small sales spreadsheet.",
+      "url": "https://support.microsoft.com/excel"
+    },
+    "Pandas": {
+      "step": "Learn DataFrames, missing values and groupby.",
+      "practice": "Clean and summarize a CSV dataset.",
+      "url": "https://pandas.pydata.org/docs/getting_started/"
+    },
+    "Data Visualization": {
+      "step": "Choose charts that clearly communicate comparisons.",
+      "practice": "Create three labeled plots and explain them.",
+      "url": "https://matplotlib.org/stable/tutorials/index.html"
+    },
+    "Machine Learning": {
+      "step": "Learn train/test splits, overfitting and evaluation.",
+      "practice": "Compare two simple classifiers on held-out data.",
+      "url": "https://scikit-learn.org/stable/getting_started.html"
+    },
+    "Scikit-learn": {
+      "step": "Learn pipelines, fit, predict and metrics.",
+      "practice": "Train and save a reproducible pipeline.",
+      "url": "https://scikit-learn.org/stable/user_guide.html"
+    },
+    "NumPy": {
+      "step": "Learn arrays, indexing and vector operations.",
+      "practice": "Implement normalization with NumPy.",
+      "url": "https://numpy.org/doc/stable/user/absolute_beginners.html"
+    },
+    "Statistics": {
+      "step": "Learn averages, variation, correlation and sampling.",
+      "practice": "Describe a dataset and its limitations.",
+      "url": "https://www.khanacademy.org/math/statistics-probability"
+    },
+    "Testing": {
+      "step": "Learn test cases, assertions and boundary cases.",
+      "practice": "Write tests for a registration form.",
+      "url": "https://docs.pytest.org/en/stable/getting-started.html"
+    },
+    "Selenium": {
+      "step": "Learn browser locators, waits and assertions.",
+      "practice": "Automate an authorized demo form.",
+      "url": "https://www.selenium.dev/documentation/webdriver/"
+    },
+    "Postman": {
+      "step": "Learn requests, collections and assertions.",
+      "practice": "Test the success and error responses of an API.",
+      "url": "https://learning.postman.com/docs/getting-started/overview/"
+    },
+    "Linux": {
+      "step": "Learn shell commands, processes and permissions.",
+      "practice": "Write a troubleshooting checklist for a local server.",
+      "url": "https://ubuntu.com/tutorials/command-line-for-beginners"
+    },
+    "AWS": {
+      "step": "Learn compute, storage, IAM and network basics.",
+      "practice": "Design a small cloud deployment; check cost before provisioning.",
+      "url": "https://aws.amazon.com/getting-started/"
+    },
+    "Networking": {
+      "step": "Learn IP addresses, DNS, TCP and HTTP.",
+      "practice": "Explain how a browser reaches a web server.",
+      "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Howto/Web_mechanics/How_does_the_Internet_work"
+    },
+    "Docker": {
+      "step": "Learn images, containers and Dockerfiles.",
+      "practice": "Containerize a small local application.",
+      "url": "https://docs.docker.com/get-started/"
+    },
+    "Figma": {
+      "step": "Learn frames, components and layout.",
+      "practice": "Create a consistent three-screen prototype.",
+      "url": "https://help.figma.com/hc/en-us"
+    },
+    "UI/UX": {
+      "step": "Learn hierarchy, consistency and accessibility.",
+      "practice": "Review a form and improve its usability.",
+      "url": "https://www.w3.org/WAI/fundamentals/accessibility-intro/"
+    },
+    "Prototyping": {
+      "step": "Sketch screens and connect user journeys.",
+      "practice": "Build and test a clickable prototype.",
+      "url": "https://help.figma.com/hc/en-us/categories/360002051613"
+    },
+    "User Research": {
+      "step": "Ask neutral questions and record task observations.",
+      "practice": "Run a small usability study with consent.",
+      "url": "https://www.nngroup.com/articles/usability-testing-101/"
+    },
+    "Cybersecurity": {
+      "step": "Learn security principles and authorized testing.",
+      "practice": "Create a threat checklist for a local demo app.",
+      "url": "https://owasp.org/www-project-top-ten/"
+    },
+    "Wireshark": {
+      "step": "Learn packet filters and protocol inspection.",
+      "practice": "Inspect traffic only on a network you are authorized to use.",
+      "url": "https://www.wireshark.org/docs/"
+    },
+    "SIEM": {
+      "step": "Learn log collection, alerts and triage.",
+      "practice": "Write a simple log-based detection rule in a local lab.",
+      "url": "https://www.elastic.co/guide/en/security/current/index.html"
+    }
+  }
+}

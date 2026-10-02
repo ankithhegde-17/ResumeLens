@@ -1,0 +1,30 @@
+{% macro icon(name) -%}
+{% set paths = {
+  'overview': 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',
+  'upload': 'M12 16V3 M7 8l5-5 5 5 M4 15v6h16v-6',
+  'careers': 'M3 7h18v14H3z M8 7V3h8v4 M3 12h18 M10 12v3h4v-3',
+  'history': 'M3 11a9 9 0 1 1 3 8 M3 4v7h7 M12 7v5l3 2',
+  'evaluation': 'M4 21V13h4v8 M10 21V8h4v13 M16 21V3h4v18',
+  'help': 'M9 8a3 3 0 1 1 5 2c-2 1-2 2-2 4 M12 18v1 M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20',
+  'logout': 'M9 4H4v16h5 M9 12h12 M16 7l5 5-5 5',
+  'menu': 'M4 6h16 M4 12h16 M4 18h16',
+  'close': 'M6 6l12 12 M6 18L18 6',
+  'document': 'M5 3h9l5 5v13H5z M14 3v5h5 M8 12h8 M8 16h6',
+  'arrow': 'M4 12h16 M14 6l6 6-6 6'
+} %}
+<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="{{ paths.get(name, paths['document']) }}"/></svg>
+{%- endmacro %}
+
+{% macro brand(destination, dark=false) -%}
+<a class="brand{% if dark %} dark-brand{% endif %}" href="{{ url_for(destination) }}">
+  <span class="brand-symbol"><img src="{{ asset_url('logo.png') }}" alt="" width="42" height="44"></span>
+  <span>ResumeLens<small>MULTIMODAL CAREER GUIDE</small></span>
+</a>
+{%- endmacro %}
+
+{% macro logout_form(extra_class='') -%}
+<form class="{{ extra_class }}" method="post" action="{{ url_for('logout') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="signout-button" type="submit">{{ icon('logout') }}<span>Sign out</span></button>
+</form>
+{%- endmacro %}

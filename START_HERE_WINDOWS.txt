@@ -1,0 +1,21 @@
+MULTIMODAL RESUME ANALYZER - FIRST RUN
+
+1. Extract this ZIP completely.
+2. Open the extracted folder in VS Code. app.py and requirements.txt must be visible directly in it.
+3. Use 64-bit Python 3.11 or 3.12. Open Terminal, then run:
+
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+python check_setup.py
+python app.py
+
+4. Open http://127.0.0.1:5000/
+5. Demo mode: enter an email, request a code, then copy the six digits from the VS Code terminal. No email is sent yet.
+6. Click Analyze Resume -> Try sample. Review skills, confirm, and analyze.
+7. Connect real email/history using docs/SUPABASE_SETUP.md. Enable the actual vision-language model using docs/VISION_SETUP.md.
+
+If activation is blocked, use .\venv\Scripts\python.exe directly instead of python in the install/check/run commands.
+If requirements.txt or app.py is not found, the terminal is in the wrong folder. Open the folder containing those files.
+See README.md for full setup, model details, examples, and troubleshooting. See VIVA_QUESTIONS.md for presentation preparation.
+
