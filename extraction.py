@@ -32,7 +32,10 @@ def vision_status(cfg):
 @lru_cache(maxsize=1)
 def ocr_engine():
     # The pip wheel contains the pretrained models; no Tesseract installation.
-    from rapidocr_onnxruntime import RapidOCR
+    try:
+        from rapidocr_onnxruntime import RapidOCR
+    except ImportError:
+        raise ValueError('Local OCR is not installed. Install requirements-ocr.txt, or configure the hosted OCR service.') from None
     return RapidOCR(intra_op_num_threads=2, inter_op_num_threads=2)
 
 
@@ -101,6 +104,30 @@ def extract_document(blob, filename, cfg, requested='auto', observer=None):
         engine = 'ocr'
     if engine not in {'auto', 'ocr', 'vlm'}:
         raise ValueError('Unknown extraction engine.')
+    if cfg.get('VERCEL_HOSTED'):
+        # Inspect text PDF pages first. One remote request handles a whole
+        # mixed/scanned document, avoiding five sequential OCR API calls.
+        needs_ocr = extension != 'pdf'
+        if extension == 'pdf':
+            if not blob.startswith(b'%PDF-'):
+                raise ValueError('The file is not a genuine PDF.')
+            try:
+                with fitz.open(stream=blob,filetype='pdf') as document:
+                    if document.needs_pass:
+                        raise ValueError('Password-protected PDFs are not supported. Upload an unlocked copy.')
+                    if not 1 <= len(document) <= MAX_PAGES:
+                        raise ValueError(f'Use a resume with 1–{MAX_PAGES} pages.')
+                    needs_ocr = any(len(page.get_text('text').strip()) < 60 for page in document)
+            except (fitz.FileDataError,RuntimeError):
+                raise ValueError('Unable to open the PDF. It may be corrupt.') from None
+        else:
+            normalize_image(blob)  # Validate actual image bytes before forwarding.
+        if needs_ocr:
+            from remote_ocr import extract_remote
+            started=time.perf_counter()
+            result=extract_remote(blob,filename,cfg)
+            if observer: observer('ocr-service',time.perf_counter()-started)
+            return result
     ready = None
 
     def vision_ready():
@@ -114,7 +141,7 @@ def extract_document(blob, filename, cfg, requested='auto', observer=None):
     pages, notes = [], []
 
     def visual_page(image, number):
-        use_vlm = vision_ready() and engine != 'ocr'
+        use_vlm = engine != 'ocr' and vision_ready()
         if engine == 'vlm' and not use_vlm:
             raise ValueError('Vision mode needs Ollama and its model. See docs/VISION_SETUP.md, or choose OCR.')
         try:

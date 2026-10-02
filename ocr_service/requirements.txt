@@ -1,0 +1,15 @@
+# Install this first, then RapidOCR separately with --no-deps (see Dockerfile).
+# Exactly one cv2 provider: headless, no GUI OpenCV and no classifier packages.
+Flask==3.1.2
+requests==2.32.5
+PyMuPDF==1.26.4
+Pillow==11.3.0
+numpy==2.2.6
+onnxruntime==1.22.1
+opencv-python-headless==4.11.0.86
+pyclipper>=1.2.0
+Shapely>=1.8.0
+PyYAML>=6.0
+six>=1.16
+tqdm>=4.65
+gunicorn==23.0.0

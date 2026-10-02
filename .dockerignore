@@ -1,0 +1,9 @@
+*
+!ocr_service/
+!ocr_service/**
+!extraction.py
+!remote_ocr.py
+**/__pycache__/
+**/*.pyc
+**/.env
+**/.env.*

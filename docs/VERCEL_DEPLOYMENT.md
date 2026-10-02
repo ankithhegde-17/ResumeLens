@@ -2,7 +2,7 @@
 
 Prepared 2026-10-02. No redesign, existing routes/forms/auth logic preserved.
 This preparation is not a successful cloud build/deployment: real credentials,
-SQL migrations and the Vercel account's Large Functions eligibility still need setup.
+SQL migrations and the separate private OCR service still need setup.
 
 ## Entrypoint and build
 
@@ -40,7 +40,8 @@ SUPABASE_DB_URL=YOUR-PRIVATE-TRANSACTION-POOLER-URL
 GEMINI_API_KEY=YOUR-REPLACEMENT-GEMINI-KEY
 GEMINI_MODEL=gemini-3.5-flash-lite
 GEMINI_TIMEOUT=25
-VERCEL_SUPPORT_LARGE_FUNCTIONS=1
+OCR_SERVICE_URL=https://YOUR-OCR-DOMAIN
+OCR_SERVICE_SECRET=YOUR-SHARED-PRIVATE-SECRET
 ```
 
 Do not paste real values into Git or documentation. Generate SECRET_KEY locally
@@ -99,9 +100,11 @@ only optimizations; losing them does not lose authenticated state or records.
 Use `EXTRACTION_ENGINE=ocr`. Hosted requests force direct PDF text + OCR even
 if a manipulated form requests VLM; no localhost Ollama request is attempted.
 Local `auto`/`vlm` and Ollama continue working. Text PDFs are read before OCR.
-RapidOCR models remain lazily loaded once per warm process from installed wheel
-assets. Heavy OCR cold starts, five-page scans and memory use need real Vercel
-testing; a 60-second limit is not a promise that every document will finish.
+Hosted image/scanned documents use one authenticated HTTPS request to the private
+OCR container. Text-only PDFs never call it. Set OCR_SERVICE_URL and the same
+OCR_SERVICE_SECRET on both sides; see [OCR deployment](../ocr_service/README.md).
+The original local RapidOCR/Ollama path remains available with requirements-ocr.txt.
+Timeouts and unavailable service errors are friendly and do not break other pages.
 
 Vercel has a [4.5 MB function payload limit](https://vercel.com/docs/functions/limitations).
 Hosted multipart requests are limited to 4 MiB including form overhead, while
@@ -111,32 +114,15 @@ smallest future adjustment is direct private Supabase Storage upload with
 short-lived owner-scoped access, not increasing Flask's limit; not implemented
 because it changes the existing upload workflow.
 
-## Dependencies and deployment blocker
+## Dependencies and bundle reduction
 
-All 40 resolved wheels were downloadable for Linux x86-64 Python 3.12. Their
-combined uncompressed wheel entries measure **604,909,831 bytes / 576.9 MiB**:
-OpenCV 186.9 MiB, SciPy 106.8, NumPy 55.1, PyMuPDF 54.7, ONNX Runtime 44.7,
-scikit-learn 31.8, SymPy 25.6 and Pillow 16.7. This is a reproducible dependency
-estimate, not Vercel's measured final bundle size; installation/bytecode/app data
-and resolver changes can alter it. Existing pinned runtime dependencies remain;
-only `psycopg[binary]==3.2.10` was added for server state.
-
-The standard Python bundle limit is 500 MB. Current official documentation lists
-[Large Functions up to 5 GB, public beta](https://vercel.com/docs/frameworks/backend/flask),
-enabled with `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` per the
-[official announcement](https://vercel.com/changelog/vercel-functions-can-now-be-up-to-5-gb-in-package-size-7yAwSyCig0IQDXUIDistvS/eadf06d6c3).
-Confirm account/plan availability before deployment. If unavailable, **this full
-OCR application will not fit standard Vercel Functions as currently resolved**.
-
-Wheels establish binary availability, not successful import on Vercel. OpenCV's
-GUI wheel can additionally need system `libGL`/GUI libraries; ONNX/OpenCV native
-imports and memory must be checked in cloud build/runtime logs. If native OCR or
-size limits prevent deployment, the smallest reliable architecture adjustment
-is hosting the unchanged Flask OCR backend on a persistent Python/container
-service (or moving only OCR to such a worker). Replacing the GUI OpenCV package
-with headless OpenCV requires coordinated RapidOCR dependency handling; blindly
-adding both does not fix it because both provide `cv2`. No required OCR/ML feature
-was removed or falsely marked as deploy-verified.
+The original Vercel build was 588.02 MB. Measured headless-only reduction was
+still 525.4 MiB, so only OCR was separated. Main Linux wheel contents now total
+282.9 MiB (approximately 285 MiB including app assets before installation overhead).
+No Large Functions beta is required; remove its old environment flag. Keep the
+saved sklearn classifier and all its runtime dependencies. See the detailed
+[dependency analysis](BUNDLE_SIZE_ANALYSIS.md) and [private OCR service setup](../ocr_service/README.md).
+Final Vercel build logs remain authoritative; Linux cloud execution is not yet verified.
 
 ## Import GitHub into Vercel
 
@@ -145,7 +131,8 @@ was removed or falsely marked as deploy-verified.
 3. Select **Flask** preset and keep Root Directory at the repository root.
 4. Keep default install/output settings and the supplied Build Command.
 5. Complete the Supabase migrations/restricted runtime password setup above.
-6. Add all environment settings, including Large Functions, to Production.
+6. Deploy the private OCR service using ocr_service/README.md, then add all
+   environment settings including its HTTPS URL and shared secret to Production.
    For preview testing add the same settings to Preview using a separate test
    Supabase project where possible; never enable public demo OTPs on Vercel.
 7. Deploy. If size/native dependencies fail, use the adjustments above, not
@@ -161,7 +148,7 @@ was removed or falsely marked as deploy-verified.
 
 Flask import printed all existing routes without starting a server. Static
 build passed; public/static contains existing CSS/JS/logos/WebP. Suite passed
-66 tests (58 existing + 8 deployment cases), four pre-existing sklearn model
+85 tests including 19 new OCR-service/transport cases, four pre-existing sklearn model
 version warnings. Hosted configuration tests use fake values and no network:
 no disk writes, import/runtime adapter, homepage/login/static/protected redirects,
 cookie security, forced OCR/direct PDF, missing-setting rejection and parameterized
@@ -172,13 +159,15 @@ Modified: `app.py`, `config.py`, `extraction.py`, `requirements.txt`, `.env.exam
 `.gitignore`, `static/script.js`, `templates/upload.html`, `README.md`.
 Created: `.python-version`, `vercel.json`, `serverless_runtime.py`,
 `database/vercel_runtime_migration.sql`, `scripts/vercel_build.py`,
-`tests/test_vercel.py`, this guide. No secrets added; `.env` remains ignored.
+`tests/test_vercel.py`, this guide. OCR split adds `remote_ocr.py`,
+`requirements-ocr.txt`, `.dockerignore`, `ocr_service/`, `tests/test_remote_ocr.py`
+and `docs/BUNDLE_SIZE_ANALYSIS.md`; requirements-dev includes local OCR. No secrets added; `.env` remains ignored.
 
 Local Windows checks (local .env/demo/Supabase behavior unchanged):
 
 ```powershell
 cd "C:\Users\hegde\OneDrive\Desktop\Multimodal Resume Analyzer"
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-ocr.txt
 .\.venv\Scripts\python.exe -c "from app import app; print(app.url_map)"
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe app.py

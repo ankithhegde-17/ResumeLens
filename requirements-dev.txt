@@ -1,3 +1,2 @@
--r requirements.txt
+-r requirements-ocr.txt
 pytest==8.4.2
-

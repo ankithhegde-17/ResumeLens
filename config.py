@@ -58,6 +58,8 @@ def settings():
                 raise ValueError('Use the legacy anon key, never the service_role key.')
     return dict(SECRET_KEY=key, APP_MODE=mode, DB_PATH=runtime / 'app.sqlite3',
                 VERCEL_HOSTED=hosted, SUPABASE_DB_URL=database_url,
+                OCR_SERVICE_URL=os.getenv('OCR_SERVICE_URL','').rstrip('/'),
+                OCR_SERVICE_SECRET=os.getenv('OCR_SERVICE_SECRET','').strip(),
                 UPLOAD_MAX_MB=4 if hosted else 10,
                 SUPABASE_URL=url, SUPABASE_PUBLISHABLE_KEY=pubkey,
                 EXTRACTION_ENGINE=engine, OLLAMA_URL=os.getenv('OLLAMA_URL', 'http://127.0.0.1:11434').rstrip('/'),

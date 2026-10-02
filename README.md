@@ -2,7 +2,8 @@
 
 **Vercel preparation:** see [deployment setup and limits](docs/VERCEL_DEPLOYMENT.md).
 Hosted operation requires private Supabase runtime state, production settings,
-and Large Functions eligibility for the OCR dependency bundle. A successful
+and the optional private OCR service for images/scans. The lean web dependency
+bundle is approximately 283 MiB; see [bundle analysis](docs/BUNDLE_SIZE_ANALYSIS.md). A successful
 local test is not a verified Vercel deployment.
 
 A complete Flask mini project for students: PDF/image resume extraction, reviewed skill evidence, explainable role coverage, learning guidance, email OTP accounts and version history.
@@ -162,7 +163,7 @@ In PowerShell the explicit form is:
 If activation is blocked by your PowerShell policy, activation is optional. Use the virtual environment's Python directly for every following command:
 
 ```powershell
-.\venv\Scripts\python.exe -m pip install -r requirements.txt
+.\venv\Scripts\python.exe -m pip install -r requirements-ocr.txt
 .\venv\Scripts\python.exe check_setup.py
 .\venv\Scripts\python.exe app.py
 ```
@@ -170,10 +171,10 @@ If activation is blocked by your PowerShell policy, activation is optional. Use 
 ### STEP 6 — Install dependencies
 
 ```powershell
-pip install -r requirements.txt
+pip install -r requirements-ocr.txt
 ```
 
-With an activated environment, `python -m pip install -r requirements.txt` is equivalent and ensures the intended Python is used. A pip update notice is informational; it does not explain a missing requirements file.
+With an activated environment, `python -m pip install -r requirements-ocr.txt` is equivalent and ensures the intended Python is used. A pip update notice is informational; it does not explain a missing requirements file.
 
 ### STEP 7 — Check setup
 

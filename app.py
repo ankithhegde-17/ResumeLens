@@ -342,7 +342,7 @@ def create_app(overrides=None):
     @login_required
     def sample_file(filename):
         allowed = {'sample_resume.pdf', 'sample_resume.png', 'sample_phone_photo.jpg', 'sample_scanned_resume.pdf', 'sample_resume_v2.pdf', 'sample_job_description.txt'}
-        if filename not in allowed:
+        if filename not in allowed or (app.config.get('VERCEL_HOSTED') and filename=='sample_scanned_resume.pdf'):
             abort(404)
         return send_file(BASE_DIR / 'samples' / filename, as_attachment=True)
 
