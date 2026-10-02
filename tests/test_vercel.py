@@ -83,3 +83,41 @@ def test_vercel_config():
     assert 'builds' not in config and 'rewrites' not in config
     assert config['functions']['app.py']['maxDuration']==60
     assert (BASE_DIR/'.python-version').read_text().strip()=='3.12'
+
+
+def test_temporary_database_logging_redacts_credentials(monkeypatch,capsys):
+    import sys
+    from types import SimpleNamespace
+    from storage import StoreError
+    dsn='postgresql://user:encoded%21password@example.com/db'
+    secret='private-signing-secret-fixture'
+    monkeypatch.setenv('SECRET_KEY',secret)
+    class DatabaseError(Exception): pass
+    def fail(*args,**kwargs):
+        raise DatabaseError(f'connection failed: {dsn} encoded!password {secret}\nDETAIL: access_token=private-row-token')
+    monkeypatch.setitem(sys.modules,'psycopg',SimpleNamespace(Error=DatabaseError,connect=fail))
+    monkeypatch.setitem(sys.modules,'psycopg.rows',SimpleNamespace(dict_row=object()))
+    monkeypatch.setitem(sys.modules,'psycopg.conninfo',SimpleNamespace(conninfo_to_dict=lambda value: {'password':'encoded!password'}))
+    with pytest.raises(StoreError,match='Cloud runtime storage is unavailable'):
+        with PostgresRuntime(dsn).connect(): pass
+    output=capsys.readouterr().out
+    assert '[PostgresRuntime] DatabaseError: connection failed:' in output
+    for value in [dsn,'encoded!password',secret,'private-row-token']:
+        assert value not in output
+
+
+def test_temporary_database_logging_primary_only(monkeypatch,capsys):
+    import sys
+    from types import SimpleNamespace
+    from storage import StoreError
+    class DatabaseError(Exception):
+        diag=SimpleNamespace(message_primary='relation resumelens_private.runtime_state does not exist')
+    def fail(*args,**kwargs): raise DatabaseError('DETAIL: private session payload')
+    monkeypatch.setitem(sys.modules,'psycopg',SimpleNamespace(Error=DatabaseError,connect=fail))
+    monkeypatch.setitem(sys.modules,'psycopg.rows',SimpleNamespace(dict_row=object()))
+    monkeypatch.setitem(sys.modules,'psycopg.conninfo',SimpleNamespace(conninfo_to_dict=lambda value: {}))
+    with pytest.raises(StoreError):
+        with PostgresRuntime('postgresql://example.com/db').connect(): pass
+    output=capsys.readouterr().out
+    assert 'relation resumelens_private.runtime_state does not exist' in output
+    assert 'private session payload' not in output

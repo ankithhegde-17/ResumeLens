@@ -5,7 +5,10 @@ through PostgREST. Each short transaction uses the Supabase transaction pooler.
 """
 import hashlib
 import json
+import os
+import re
 import time
+from urllib.parse import unquote
 from contextlib import contextmanager
 from storage import StoreError
 
@@ -24,8 +27,28 @@ class PostgresRuntime:
                 # Transaction-local, compatible with transaction pooling.
                 db.execute("SET LOCAL statement_timeout = '10000ms'")
                 yield db
-        except psycopg.Error:
-            # Never expose the connection string/password or token payload.
+        except psycopg.Error as exc:
+            # TEMPORARY diagnostics: omit DETAIL/CONTEXT, which can contain a
+            # failing row's session tokens. Keep the actual primary error.
+            message = getattr(getattr(exc, 'diag', None), 'message_primary', None) or str(exc)
+            message = re.split(r'(?im)^\s*(?:DETAIL|CONTEXT|STATEMENT|QUERY):', message)[0]
+            message = message.replace(self.database_url, '[REDACTED_DSN]')
+            secrets = [os.getenv(name, '') for name in
+                       ('SUPABASE_DB_URL', 'SECRET_KEY', 'GEMINI_API_KEY',
+                        'OCR_SERVICE_SECRET', 'ACCESS_TOKEN', 'REFRESH_TOKEN')]
+            try:
+                from psycopg.conninfo import conninfo_to_dict
+                secrets.append(conninfo_to_dict(self.database_url).get('password', ''))
+            except Exception:
+                # Redaction failure must not replace the original StoreError.
+                message = '[Database error message withheld: DSN redaction failed]'
+            for secret in sorted(filter(None, secrets), key=len, reverse=True):
+                message = message.replace(secret, '[REDACTED]')
+                message = message.replace(unquote(secret), '[REDACTED]')
+            message = re.sub(r'postgres(?:ql)?://[^\s]+', '[REDACTED_DSN]', message, flags=re.I)
+            message = re.sub(r'\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+', '[REDACTED_TOKEN]', message)
+            message = re.sub(r'(?i)(password|access_token|refresh_token|secret_key)\s*[:=]\s*[^\s,;]+', r'\1=[REDACTED]', message)
+            print(f'[PostgresRuntime] {exc.__class__.__name__}: {message}', flush=True)
             raise StoreError('Cloud runtime storage is unavailable. Check the runtime migration and server database connection.') from None
 
     @staticmethod
