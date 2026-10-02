@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!file) { info.textContent = ''; prompt.textContent = 'Drop your resume here'; return; }
       let error = '';
       if (!/\.(pdf|jpe?g|png)$/i.test(file.name)) error = 'Choose a PDF, JPG, or PNG file.';
-      else if (file.size > 10 * 1024 * 1024) error = 'Choose a file up to 10 MB.';
+      else if (file.size > Number(input.dataset.maxMb || 10) * 1024 * 1024) error = `Choose a file smaller than ${input.dataset.maxMb || 10} MB.`;
       else if (!file.size) error = 'This file is empty. Choose another resume.';
       input.setCustomValidity(error);
       zone.classList.toggle('invalid', Boolean(error));

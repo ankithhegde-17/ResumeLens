@@ -17,6 +17,8 @@ MAX_TOTAL_TEXT = 35000
 
 
 def vision_status(cfg):
+    if cfg.get('VERCEL_HOSTED'):
+        return False, 'Hosted extraction uses OCR; local Ollama is unavailable.'
     try:
         response = requests.get(cfg['OLLAMA_URL'] + '/api/tags', timeout=1)
         response.raise_for_status()
@@ -88,12 +90,15 @@ def normalize_image(blob):
 
 
 def extract_document(blob, filename, cfg, requested='auto', observer=None):
-    if not blob or len(blob) > 10 * 1024 * 1024:
-        raise ValueError('Upload a non-empty file up to 10 MB.')
+    maximum = cfg.get('UPLOAD_MAX_MB', 10)
+    if not blob or len(blob) > maximum * 1024 * 1024:
+        raise ValueError(f'Upload a non-empty file up to {maximum} MB.')
     extension = filename.rsplit('.', 1)[-1].lower()
     if extension not in {'pdf', 'png', 'jpg', 'jpeg'}:
         raise ValueError('Choose a PDF, JPG or PNG resume.')
     engine = cfg['EXTRACTION_ENGINE'] if requested == 'default' else requested
+    if cfg.get('VERCEL_HOSTED'):
+        engine = 'ocr'
     if engine not in {'auto', 'ocr', 'vlm'}:
         raise ValueError('Unknown extraction engine.')
     ready = None

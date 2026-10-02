@@ -24,7 +24,11 @@ def create_app(overrides=None):
     app.config.update(settings())
     if overrides:
         app.config.update(overrides)
-    runtime = RuntimeDB(app.config['DB_PATH'])
+    if app.config.get('VERCEL_HOSTED'):
+        from serverless_runtime import PostgresRuntime
+        runtime = PostgresRuntime(app.config['SUPABASE_DB_URL'])
+    else:
+        runtime = RuntimeDB(app.config['DB_PATH'])
     auth = Authentication(app.config, runtime)
     app.extensions['runtime'] = runtime
     app.extensions['authentication'] = auth
@@ -69,7 +73,7 @@ def create_app(overrides=None):
 
     @app.context_processor
     def common():
-        return dict(csrf_token=csrf_token, asset_url=asset_url, mode=app.config['APP_MODE'], profile=g.get('profile', {}),
+        return dict(csrf_token=csrf_token, asset_url=asset_url, mode=app.config['APP_MODE'], upload_max_mb=app.config['UPLOAD_MAX_MB'], hosted=app.config.get('VERCEL_HOSTED'), profile=g.get('profile', {}),
                     signed_user=g.get('user'), role_catalog=load_catalog()['roles'])
 
     @app.after_request
@@ -348,7 +352,7 @@ def create_app(overrides=None):
 
     @app.errorhandler(413)
     def too_big(error):
-        return render_template('error.html', code=413, message='This request is too large. Upload a resume up to 10 MB.'), 413
+        return render_template('error.html', code=413, message=f'This request is too large. Upload a resume smaller than {app.config["UPLOAD_MAX_MB"]} MB.'), 413
 
     @app.errorhandler(400)
     @app.errorhandler(404)
@@ -364,10 +368,8 @@ def create_app(overrides=None):
     return app
 
 
+app = create_app()
+
 if __name__ == '__main__':
-    try:
-        application = create_app()
-    except ValueError as exc:
-        raise SystemExit(f'Setup error: {exc}')
-    print(f'Multimodal Resume Analyzer | mode={application.config["APP_MODE"]} | http://127.0.0.1:{os.getenv("PORT", "5000")}', flush=True)
-    application.run(host='127.0.0.1', port=int(os.getenv('PORT', '5000')), debug=False)
+    print(f'Multimodal Resume Analyzer | mode={app.config["APP_MODE"]} | http://127.0.0.1:{os.getenv("PORT", "5000")}', flush=True)
+    app.run(host='127.0.0.1', port=int(os.getenv('PORT', '5000')), debug=False)

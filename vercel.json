@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "flask",
+  "buildCommand": "python scripts/vercel_build.py",
+  "functions": {
+    "app.py": {
+      "maxDuration": 60,
+      "excludeFiles": "{.env,.env.*,instance/**,.venv/**,venv/**,venv312/**,tests/**,docs/**,output/**,*.log,static/login-hero.png}"
+    }
+  }
+}

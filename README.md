@@ -1,5 +1,10 @@
 # Multimodal Resume Analyzer — ResumeLens
 
+**Vercel preparation:** see [deployment setup and limits](docs/VERCEL_DEPLOYMENT.md).
+Hosted operation requires private Supabase runtime state, production settings,
+and Large Functions eligibility for the OCR dependency bundle. A successful
+local test is not a verified Vercel deployment.
+
 A complete Flask mini project for students: PDF/image resume extraction, reviewed skill evidence, explainable role coverage, learning guidance, email OTP accounts and version history.
 
 **First run:** the project opens in local demo mode, without cloud keys. It includes an evaluated trained classifier, fictional sample resumes, a neural OCR fallback and the Supabase/VLM integrations. Real email delivery and cloud records require your Supabase settings. The actual vision-language model requires a separate Ollama model download.
