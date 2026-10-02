@@ -5,7 +5,7 @@
   "functions": {
     "app.py": {
       "maxDuration": 60,
-      "excludeFiles": "{.env,.env.*,instance/**,.venv/**,venv/**,venv312/**,tests/**,docs/**,output/**,ocr_service/**,__pycache__/**,*.log,train_model.py,evaluate_extraction.py,make_samples.py,data/role_examples.csv,data/sample_annotations.json,scripts/**,static/login-hero.png,samples/sample_scanned_resume.pdf}"
+      "excludeFiles": "{tests/**,docs/**,output/**,.venv/**,venv/**,instance/**,*.log,static/login-hero.png}"
     }
   }
 }
