@@ -25,8 +25,8 @@ def create_app(overrides=None):
     if overrides:
         app.config.update(overrides)
     if app.config.get('VERCEL_HOSTED'):
-        from serverless_runtime import PostgresRuntime
-        runtime = PostgresRuntime(app.config['SUPABASE_DB_URL'])
+        from serverless_runtime import SupabaseRuntime
+        runtime = SupabaseRuntime(app.config)
     else:
         runtime = RuntimeDB(app.config['DB_PATH'])
     auth = Authentication(app.config, runtime)

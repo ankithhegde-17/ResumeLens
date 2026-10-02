@@ -35,7 +35,9 @@ as the server/no-GUI variant:
 ## Final web requirements
 
 `requirements.txt` retains Flask, Requests, python-dotenv, PyMuPDF, Pillow,
-NumPy, scikit-learn, joblib and psycopg. OCR-only dependencies leave the Vercel
+NumPy, scikit-learn and joblib. The HTTPS runtime replacement also removes
+psycopg; the historical wheel totals below still include it and overestimate
+the current lean dependency size. OCR-only dependencies leave the Vercel
 graph: RapidOCR/models, ONNX Runtime, OpenCV, pyclipper, Shapely, PyYAML, SymPy
 and other ONNX/OCR-only transitives. No classifier feature is removed.
 

@@ -28,9 +28,9 @@ def settings():
         key = key_path.read_text(encoding='utf-8').strip()
     mode = os.getenv('APP_MODE', 'demo').lower()
     engine = os.getenv('EXTRACTION_ENGINE', 'auto').lower()
-    database_url = os.getenv('SUPABASE_DB_URL', '').strip()
-    if hosted and (mode != 'supabase' or not database_url):
-        raise ValueError('Vercel requires APP_MODE=supabase and the server-only SUPABASE_DB_URL transaction-pooler connection.')
+    service_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY', '').strip() if hosted else ''
+    if hosted and (mode != 'supabase' or not service_key):
+        raise ValueError('Vercel requires APP_MODE=supabase and server-only SUPABASE_SERVICE_ROLE_KEY.')
     if hosted and os.getenv('COOKIE_SECURE', '').lower() != 'true':
         raise ValueError('Set COOKIE_SECURE=true for Vercel HTTPS.')
     if hosted:
@@ -57,7 +57,7 @@ def settings():
             if role == 'service_role':
                 raise ValueError('Use the legacy anon key, never the service_role key.')
     return dict(SECRET_KEY=key, APP_MODE=mode, DB_PATH=runtime / 'app.sqlite3',
-                VERCEL_HOSTED=hosted, SUPABASE_DB_URL=database_url,
+                VERCEL_HOSTED=hosted, SUPABASE_SERVICE_ROLE_KEY=service_key,
                 OCR_SERVICE_URL=os.getenv('OCR_SERVICE_URL','').rstrip('/'),
                 OCR_SERVICE_SECRET=os.getenv('OCR_SERVICE_SECRET','').strip(),
                 UPLOAD_MAX_MB=4 if hosted else 10,

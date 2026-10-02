@@ -1,125 +1,104 @@
-"""Persist server-only session/draft state in existing Supabase Postgres.
-
-No network calls or schema writes at import. The private schema is not exposed
-through PostgREST. Each short transaction uses the Supabase transaction pooler.
-"""
+"""Backend-only HTTPS runtime state; never logs headers, tokens or responses."""
 import hashlib
+import base64
 import json
-import os
-import re
 import time
-from urllib.parse import unquote
-from contextlib import contextmanager
+from urllib.parse import urlparse
+import requests
 from storage import StoreError
 
+UNAVAILABLE = 'Cloud runtime storage is unavailable. Check the REST runtime migration and server service-role configuration.'
 
-class PostgresRuntime:
-    def __init__(self, database_url):
-        self.database_url = database_url
 
-    @contextmanager
-    def connect(self):
-        import psycopg
-        from psycopg.rows import dict_row
+class SupabaseRuntime:
+    def __init__(self, cfg):
+        url = cfg.get('SUPABASE_URL', '').rstrip('/')
+        key = cfg.get('SUPABASE_SERVICE_ROLE_KEY', '').strip()
+        parsed = urlparse(url)
+        if parsed.scheme != 'https' or not parsed.netloc or parsed.username or parsed.password or parsed.query or parsed.fragment or not key:
+            raise ValueError('Configure HTTPS SUPABASE_URL and server-only SUPABASE_SERVICE_ROLE_KEY.')
+        self.url = url + '/rest/v1/'
         try:
-            with psycopg.connect(self.database_url, sslmode='require', connect_timeout=5,
-                                 prepare_threshold=None, row_factory=dict_row) as db:
-                # Transaction-local, compatible with transaction pooling.
-                db.execute("SET LOCAL statement_timeout = '10000ms'")
-                yield db
-        except psycopg.Error as exc:
-            # TEMPORARY diagnostics: str(exc) is not inherently secret-safe.
-            # Prefer its primary message and redact before printing. DETAIL/
-            # CONTEXT can include failing rows with authentication tokens.
-            message = str(exc)
-            primary = getattr(getattr(exc, 'diag', None), 'message_primary', None)
-            if primary:
-                message = primary
-            message = re.split(r'(?im)^\s*(?:DETAIL|CONTEXT|STATEMENT|QUERY):', message)[0]
-            message = message.replace(self.database_url, '[REDACTED_DSN]')
-            secrets = [os.getenv(name, '') for name in
-                       ('SUPABASE_DB_URL', 'SECRET_KEY', 'GEMINI_API_KEY',
-                        'OCR_SERVICE_SECRET', 'ACCESS_TOKEN', 'REFRESH_TOKEN')]
-            try:
-                from psycopg.conninfo import conninfo_to_dict
-                secrets.append(conninfo_to_dict(self.database_url).get('password', ''))
-            except Exception:
-                # Redaction failure must not replace the original StoreError.
-                message = '[Database error message withheld: DSN redaction failed]'
-            for secret in sorted(filter(None, secrets), key=len, reverse=True):
-                message = message.replace(secret, '[REDACTED]')
-                message = message.replace(unquote(secret), '[REDACTED]')
-            message = re.sub(r'postgres(?:ql)?://[^\s]+', '[REDACTED_DSN]', message, flags=re.I)
-            message = re.sub(r'\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+', '[REDACTED_TOKEN]', message)
-            message = re.sub(r'(?i)(password|access_token|refresh_token|secret_key)\s*[:=]\s*[^\s,;]+', r'\1=[REDACTED]', message)
-            print(
-                f'[PostgresRuntime] {exc.__class__.__name__}: {message}',
-                flush=True
-            )
-            raise StoreError('Cloud runtime storage is unavailable. Check the runtime migration and server database connection.') from None
+            encoded = key.split('.')[1]
+            role = json.loads(base64.urlsafe_b64decode(encoded + '=' * (-len(encoded) % 4)))['role']
+        except (ValueError, KeyError, IndexError, TypeError):
+            role = None
+        if role != 'service_role':
+            raise ValueError('SUPABASE_SERVICE_ROLE_KEY must be the legacy service_role JWT (not a publishable or sb_secret key).')
+        # Never reuse normal user repository headers or mutate shared session auth.
+        self.headers = {'apikey': key, 'Authorization': 'Bearer ' + key}
 
     @staticmethod
     def key(value):
         return hashlib.sha256(str(value).encode()).hexdigest()
 
+    def request(self, method, path, **kwargs):
+        headers = dict(self.headers)
+        headers.update(kwargs.pop('headers', {}))
+        try:
+            # Request-local transport avoids sharing tokens/state across threads.
+            with requests.Session() as transport:
+                response = transport.request(method, self.url + path, headers=headers,
+                                             timeout=(5, 15), allow_redirects=False, **kwargs)
+            if not response.ok:
+                raise StoreError(UNAVAILABLE)
+            if not response.content:
+                return None
+            return response.json()
+        except (requests.RequestException, ValueError):
+            # Raw errors can include credentials, request headers and row payload.
+            raise StoreError(UNAVAILABLE) from None
+
     def _put(self, kind, key, owner, payload, expires):
-        with self.connect() as db:
-            db.execute('''INSERT INTO resumelens_private.runtime_state
-                (kind,key,owner,payload,expires) VALUES (%s,%s,%s,%s::jsonb,%s)
-                ON CONFLICT(kind,key) DO UPDATE SET owner=EXCLUDED.owner,
-                payload=EXCLUDED.payload,expires=EXCLUDED.expires
-                WHERE runtime_state.owner=EXCLUDED.owner''',
-                (kind,self.key(key),owner,json.dumps(payload),expires))
+        self.request('POST', 'server_runtime_state',
+            params={'on_conflict': 'kind,key,owner'},
+            headers={'Prefer': 'resolution=merge-duplicates,return=minimal'},
+            json=dict(kind=kind, key=self.key(key), owner=owner, payload=payload, expires=expires))
+
+    def _filters(self, kind, key, owner):
+        return {'kind': 'eq.' + kind, 'key': 'eq.' + self.key(key), 'owner': 'eq.' + owner}
 
     def _get(self, kind, key, owner):
-        with self.connect() as db:
-            db.execute('DELETE FROM resumelens_private.runtime_state WHERE kind=%s AND key=%s AND expires<=%s',
-                       (kind,self.key(key),time.time()))
-            row = db.execute('''SELECT payload FROM resumelens_private.runtime_state
-                WHERE kind=%s AND key=%s AND owner=%s AND expires>%s''',
-                (kind,self.key(key),owner,time.time())).fetchone()
-        return row['payload'] if row else None
+        filters = self._filters(kind, key, owner)
+        # Only delete the caller's expired row; no global destructive operation.
+        self.request('DELETE', 'server_runtime_state', params=dict(filters, expires='lte.' + str(time.time())))
+        rows = self.request('GET', 'server_runtime_state',
+                            params=dict(filters, expires='gt.' + str(time.time()), select='payload', limit='1'))
+        if not isinstance(rows, list) or (rows and (not isinstance(rows[0], dict) or 'payload' not in rows[0])):
+            raise StoreError(UNAVAILABLE)
+        return rows[0]['payload'] if rows else None
 
     def _delete(self, kind, key, owner):
-        with self.connect() as db:
-            db.execute('DELETE FROM resumelens_private.runtime_state WHERE kind=%s AND key=%s AND owner=%s',
-                       (kind,self.key(key),owner))
+        self.request('DELETE', 'server_runtime_state', params=self._filters(kind, key, owner))
 
     def set_session(self, sid, mode, data, expires):
-        self._put('session',sid,mode,data,expires)
+        self._put('session', sid, mode, data, expires)
 
     def get_session(self, sid, mode):
-        return self._get('session',sid,mode)
+        return self._get('session', sid, mode)
 
     def delete_session(self, sid):
-        with self.connect() as db:
-            db.execute("DELETE FROM resumelens_private.runtime_state WHERE key=%s AND kind IN ('session','chat')",
-                       (self.key(sid),))
+        self.request('DELETE', 'server_runtime_state',
+                     params={'key': 'eq.' + self.key(sid), 'kind': 'in.(session,chat)'})
 
     def save_draft(self, draft_id, uid, data):
-        self._put('draft',draft_id,uid,data,time.time()+3600)
+        self._put('draft', draft_id, uid, data, time.time() + 3600)
 
     def get_draft(self, draft_id, uid):
-        return self._get('draft',draft_id,uid)
+        return self._get('draft', draft_id, uid)
 
     def delete_draft(self, draft_id, uid):
-        self._delete('draft',draft_id,uid)
+        self._delete('draft', draft_id, uid)
 
     def chat(self, sid, uid):
-        return self._get('chat',sid,uid) or []
+        return self._get('chat', sid, uid) or []
 
     def save_chat(self, sid, uid, messages):
-        self._put('chat',sid,uid,messages[-8:],time.time()+3600)
+        self._put('chat', sid, uid, messages[-8:], time.time() + 3600)
 
     def rate_allow(self, bucket, maximum=6, window=600):
-        stamp = time.time()
-        with self.connect() as db:
-            # One atomic UPSERT; parallel Vercel instances share the same limit.
-            row = db.execute('''INSERT INTO resumelens_private.rate_limits AS limits
-                (bucket,count,reset) VALUES (%s,1,%s)
-                ON CONFLICT(bucket) DO UPDATE SET
-                count=CASE WHEN limits.reset<=%s THEN 1 ELSE limits.count+1 END,
-                reset=CASE WHEN limits.reset<=%s THEN EXCLUDED.reset ELSE limits.reset END
-                WHERE limits.reset<=%s OR limits.count<%s RETURNING count''',
-                (self.key(bucket),stamp+window,stamp,stamp,stamp,maximum)).fetchone()
-        return row is not None
+        result = self.request('POST', 'rpc/runtime_rate_allow',
+                              json=dict(p_bucket=self.key(bucket), p_maximum=maximum, p_window=window))
+        if not isinstance(result, bool):
+            raise StoreError(UNAVAILABLE)
+        return result
