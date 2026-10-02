@@ -28,9 +28,13 @@ class PostgresRuntime:
                 db.execute("SET LOCAL statement_timeout = '10000ms'")
                 yield db
         except psycopg.Error as exc:
-            # TEMPORARY diagnostics: omit DETAIL/CONTEXT, which can contain a
-            # failing row's session tokens. Keep the actual primary error.
-            message = getattr(getattr(exc, 'diag', None), 'message_primary', None) or str(exc)
+            # TEMPORARY diagnostics: str(exc) is not inherently secret-safe.
+            # Prefer its primary message and redact before printing. DETAIL/
+            # CONTEXT can include failing rows with authentication tokens.
+            message = str(exc)
+            primary = getattr(getattr(exc, 'diag', None), 'message_primary', None)
+            if primary:
+                message = primary
             message = re.split(r'(?im)^\s*(?:DETAIL|CONTEXT|STATEMENT|QUERY):', message)[0]
             message = message.replace(self.database_url, '[REDACTED_DSN]')
             secrets = [os.getenv(name, '') for name in
@@ -48,7 +52,10 @@ class PostgresRuntime:
             message = re.sub(r'postgres(?:ql)?://[^\s]+', '[REDACTED_DSN]', message, flags=re.I)
             message = re.sub(r'\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+', '[REDACTED_TOKEN]', message)
             message = re.sub(r'(?i)(password|access_token|refresh_token|secret_key)\s*[:=]\s*[^\s,;]+', r'\1=[REDACTED]', message)
-            print(f'[PostgresRuntime] {exc.__class__.__name__}: {message}', flush=True)
+            print(
+                f'[PostgresRuntime] {exc.__class__.__name__}: {message}',
+                flush=True
+            )
             raise StoreError('Cloud runtime storage is unavailable. Check the runtime migration and server database connection.') from None
 
     @staticmethod
