@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Terms & Conditions{% endblock %}
+{% block crumb %}Terms &amp; Conditions{% endblock %}
+{% block content %}
+<article class="card terms-page">
+  <div class="eyebrow">RESUMELENS · PRAYOGMANCH</div>
+  <h1>Terms &amp; Conditions</h1>
+  <p class="muted">Last updated: 3 October 2026</p>
+  <p>These terms explain how you may use ResumeLens, a resume-analysis and career-learning tool. Please read them before using the service. If you do not agree with these terms, please do not use ResumeLens.</p>
+  <h2>1. What the service provides</h2>
+  <p>ResumeLens extracts text from resumes, identifies skills, compares role requirements, and suggests career paths and learning resources. Features may include OCR, vision processing and an AI career assistant.</p>
+  <h2>2. Guidance, not guarantees</h2>
+  <p>Scores and recommendations are informational, not hiring decisions, certifications or promises of employment. AI and text extraction can make mistakes. Review extracted text and verify recommendations before relying on them. You remain responsible for your applications and career decisions.</p>
+  <h2>3. Your browser workspace</h2>
+  <p>No account, email verification or sign-in is required. Temporary analyses, preferences and learning progress are saved in this browser for up to 24 hours; drafts and chat expire after one hour. They do not sync across devices. Export important results and clear browser data on shared devices. Anyone with access to this browser may be able to view its data.</p>
+  <h2>4. Uploads and acceptable use</h2>
+  <p>Upload only material you own or have permission to process. You are responsible for its accuracy and legality. Do not upload malicious files, unlawful content, or unnecessary sensitive information. Do not bypass limits, disrupt the service, scrape private data, or use the service to discriminate unlawfully.</p>
+  <h2>5. Your content and processing</h2>
+  <p>You retain ownership of your resume and other uploaded content. By submitting it, you permit the processing needed to provide the features you request, including extraction, analysis and temporary browser-local history. The service uses third-party providers for hosting and, where enabled, OCR or AI processing. Career AI questions and limited career context may be sent to the configured AI provider. Avoid including passwords or confidential information in messages.</p>
+  <p>These terms are not a complete privacy notice. For questions about personal information or saved content, email our support team. Closing a tab does not immediately erase browser-local data; use the clear-data control in Browser preferences.</p>
+  <h2>6. Resources and intellectual property</h2>
+  <p>Third-party learning sites and job resources have their own terms and policies. Their availability and accuracy are outside our control; a link is not a guarantee or endorsement. Respect the intellectual-property rights of ResumeLens and third-party content owners.</p>
+  <h2>7. Availability and changes</h2>
+  <p>Features may change, and maintenance or provider outages can interrupt access. Keep your own copies of important documents and results. Access may be restricted for misuse or security reasons. Changes to these terms will be published on this page with an updated date; please review them periodically.</p>
+  <h2>8. Responsibility and your rights</h2>
+  <p>We do not guarantee uninterrupted operation or error-free results. Nothing in these terms excludes rights or responsibilities that cannot legally be excluded under applicable law.</p>
+  <h2>9. Contact us</h2>
+  <p>For support, feedback or questions about these terms, contact <a href="mailto:support@prayogmanch.in">support@prayogmanch.in</a>. Please describe the issue without sending passwords or confidential resume details.</p>
+  <a class="button secondary" href="{{ url_for('dashboard') }}">Back to workspace</a>
+</article>
+{% endblock %}

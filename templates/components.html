@@ -21,10 +21,3 @@
   <span>ResumeLens<small>MULTIMODAL CAREER GUIDE</small></span>
 </a>
 {%- endmacro %}
-
-{% macro logout_form(extra_class='') -%}
-<form class="{{ extra_class }}" method="post" action="{{ url_for('logout') }}">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <button class="signout-button" type="submit">{{ icon('logout') }}<span>Sign out</span></button>
-</form>
-{%- endmacro %}

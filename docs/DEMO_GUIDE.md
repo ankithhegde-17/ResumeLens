@@ -1,3 +1,9 @@
+# Historical notes (pre-authentication-removal)
+
+This document describes the former account-based implementation. Login, OTP,
+Supabase persistence and server runtime setup below are obsolete for the current
+anonymous app. See README.md and docs/VERCEL_DEPLOYMENT.md for active behavior.
+
 # Suggested academic demonstration
 
 ## Explain the objective in 20 seconds
@@ -29,4 +35,3 @@
 - An absence from the resume is different from absence of knowledge.
 - The user reviews evidence and employers make hiring decisions.
 - Supabase and Ollama are configured externally. Their absence is clearly labeled, and no cloud credentials are embedded in the package.
-

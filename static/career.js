@@ -64,6 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function send(message, action = '', isRetry = false) {
     if (busy) return;
     const data = new FormData(form);
+    window.ResumeLensWorkspace?.decorate(data);
     data.set('message', message);
     if (action) data.set('action', action);
     if (!action && !isRetry) {
@@ -77,13 +78,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 35000);
     try {
-      const response = await fetch(form.action, {method: 'POST', body: data, credentials: 'same-origin', signal: controller.signal});
+      const response = await fetch(form.action, {method: 'POST', body: data, credentials: 'same-origin', signal: controller.signal, headers:{'X-Workspace-Client':'1'}});
       const result = await response.json();
+      window.ResumeLensWorkspace?.save(result.workspace_state);
       if (!response.ok) throw new Error(result.error || 'Career AI is unavailable. Try again later.');
       if (action === 'new') { log.replaceChildren(); input.value = ''; }
       append(result.answer);
     } catch (error) {
-      append(error.name === 'AbortError' ? 'Career AI took too long. You can retry; curated guides still work.' : (error instanceof SyntaxError ? 'Sign in again or try later. Career AI is unavailable.' : error.message));
+      append(error.name === 'AbortError' ? 'Career AI took too long. You can retry; curated guides still work.' : (error instanceof SyntaxError ? 'Try later. Career AI is unavailable.' : error.message));
       retry.hidden = action === 'new';
     } finally {
       clearTimeout(timeout);

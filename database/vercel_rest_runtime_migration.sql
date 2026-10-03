@@ -1,3 +1,5 @@
+-- OBSOLETE: retained for historical account deployments only.
+-- Anonymous ResumeLens does not use or require this migration.
 -- Run the entire script in Supabase SQL Editor. Existing application/private
 -- runtime tables and data are retained. No table is dropped or truncated.
 begin;

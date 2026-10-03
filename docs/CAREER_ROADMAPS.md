@@ -1,3 +1,9 @@
+# Historical notes (pre-authentication-removal)
+
+This document describes the former account-based implementation. Login, OTP,
+Supabase persistence and server runtime setup below are obsolete for the current
+anonymous app. See README.md and docs/VERCEL_DEPLOYMENT.md for active behavior.
+
 # Career extension — implementation and verification
 
 ## Architecture found and retained

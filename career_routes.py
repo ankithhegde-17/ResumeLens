@@ -1,16 +1,14 @@
 """Small route extension; current routes and saved analysis snapshots stay intact."""
 import hashlib
-from flask import abort, flash, g, jsonify, redirect, render_template, request, session, url_for
+from flask import abort, flash, g, jsonify, redirect, render_template, request, url_for
 from analysis import load_catalog, match_role
 from career_data import BY_SLUG, BY_ID, DISCLAIMER, alignment_label, personalize
 from skill_guides import SKILL_GUIDES, GUIDES_BY_SLUG
-from storage import StoreError
 from career_assistant import REFUSAL, AssistantError, clean_message, in_scope, curated_answer, gemini_reply
 
 STATUSES = {'not_started','learning','completed'}
 
-def register_career_routes(app, login_required, owned_record):
-    runtime = app.extensions['runtime']
+def register_career_routes(app, owned_record):
 
     def selected_record():
         analysis_id = request.values.get('analysis','')
@@ -21,19 +19,14 @@ def register_career_routes(app, login_required, owned_record):
         return g.repo.get(rows[0]['id']) if rows else None
 
     def state():
-        try:
-            progress, hours = g.repo.learning_state()
-            return progress, hours, True
-        except StoreError:
-            flash('Learning progress is unavailable. For Supabase, apply database/career_learning_migration.sql. Your saved analyses are unchanged.','info')
-            return {},10,False
+        progress,hours=g.repo.learning_state()
+        return progress,hours,True
 
     @app.context_processor
     def career_common():
         return dict(career_slug=lambda id: BY_ID[id]['slug'] if id in BY_ID else '', career_disclaimer=DISCLAIMER)
 
     @app.route('/careers/<slug>')
-    @login_required
     def career_detail(slug):
         career = BY_SLUG.get(slug)
         if not career: abort(404)
@@ -50,7 +43,6 @@ def register_career_routes(app, login_required, owned_record):
                                missing=[name for name in career['core'] if name not in mapping])
 
     @app.route('/skills/<slug>')
-    @login_required
     def skill_detail(slug):
         skill = GUIDES_BY_SLUG.get(slug)
         if not skill: abort(404)
@@ -66,7 +58,6 @@ def register_career_routes(app, login_required, owned_record):
                                guides=SKILL_GUIDES,filters=dict(cost=cost,level=level,format=kind))
 
     @app.route('/learning/progress',methods=['POST'])
-    @login_required
     def learning_progress():
         slug=request.form.get('skill',''); status=request.form.get('status','')
         if slug not in GUIDES_BY_SLUG or status not in STATUSES: abort(400,description='Choose a supported skill and progress status.')
@@ -78,7 +69,6 @@ def register_career_routes(app, login_required, owned_record):
         return redirect(url_for('career_detail',slug=career['slug'],analysis=analysis_id)) if career else redirect(url_for('skill_detail',slug=slug,analysis=analysis_id))
 
     @app.route('/learning/schedule',methods=['POST'])
-    @login_required
     def learning_schedule():
         try: hours=int(request.form.get('hours',''))
         except ValueError: abort(400)
@@ -91,13 +81,12 @@ def register_career_routes(app, login_required, owned_record):
         return redirect(url_for('career_detail',slug=career['slug'],analysis=analysis_id))
 
     @app.route('/api/career-assistant',methods=['POST'])
-    @login_required
     def career_chat():
-        uid=g.user['id']; sid=session['sid']
-        # Hash identifiers; no names/emails/tokens in rate-limit bucket labels.
-        bucket=hashlib.sha256(uid.encode()).hexdigest()
+        # Both browser and network limits; no account or provider tokens needed.
+        bucket=g.repo.owner
+        network=hashlib.sha256((request.remote_addr or 'local').encode()).hexdigest()
         if request.form.get('action')=='new':
-            runtime.save_chat(sid,uid,[])
+            g.repo.save_chat([])
             return jsonify(answer='New conversation started.',source='local')
         message=request.form.get('message','').strip()
         if not 1<=len(message)<=1200:
@@ -106,8 +95,9 @@ def register_career_routes(app, login_required, owned_record):
         except ValueError as exc: return jsonify(error=str(exc)),400
         # Fail closed for clearly unrelated/injection requests without API usage.
         if not in_scope(message): return jsonify(answer=REFUSAL,source='scope')
-        if not runtime.rate_allow('career:minute:'+bucket,12,60) or not runtime.rate_allow('career:day:'+bucket,60,86400) or not runtime.rate_allow('career:gap:'+bucket,1,2):
-            return jsonify(error='Please slow down. Career AI has a per-user request limit; try again later.'),429
+        limits=app.extensions['rate_limits']
+        if not limits.allow('career:network:'+network,30,60) or not limits.allow('career:minute:'+bucket,12,60) or not limits.allow('career:day:'+bucket,60,86400) or not limits.allow('career:gap:'+bucket,1,2):
+            return jsonify(error='Please slow down. Career AI has a browser request limit; try again later.'),429
         local=curated_answer(message)
         if local: return jsonify(answer=local,source='curated')
         if request.form.get('consent')!='yes':
@@ -127,8 +117,8 @@ def register_career_routes(app, login_required, owned_record):
             context.update(selected_career=career['title'],schedule_hours=hours,
                            roadmap=[dict(skill=s['name'],detected=s['detected'],progress=s['status'],effort_hours=s['hours']) for s in plan['steps']],
                            next_step=plan['next_step']['name'] if plan['next_step'] else 'Review and build projects')
-        history=runtime.chat(sid,uid)
+        history=g.repo.chat()
         try: answer=gemini_reply(app.config,message,context,history)
         except AssistantError as exc: return jsonify(error=str(exc)),exc.status
-        runtime.save_chat(sid,uid,history+[dict(role='user',text=message),dict(role='assistant',text=answer)])
+        g.repo.save_chat(history+[dict(role='user',text=message),dict(role='assistant',text=answer)])
         return jsonify(answer=answer,source='gemini')

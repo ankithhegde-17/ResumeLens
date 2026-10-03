@@ -1,3 +1,9 @@
+# Historical notes (pre-authentication-removal)
+
+This document describes the former account-based implementation. Login, OTP,
+Supabase persistence and server runtime setup below are obsolete for the current
+anonymous app. See README.md and docs/VERCEL_DEPLOYMENT.md for active behavior.
+
 # Architecture and important modules
 
 ```mermaid
@@ -28,4 +34,3 @@ flowchart TD
 - `app.py`: the routes connecting forms, review, analysis and storage.
 
 In demo mode, SQLite stores user results. In Supabase mode, the same user workflow uses cloud Auth/Postgres. Short-lived drafts and server sessions are local in both modes. The role catalog is versioned JSON rather than a live job feed. A JSON result contains the role comparisons to keep the database simple.
-

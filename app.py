@@ -5,18 +5,15 @@ import json
 import os
 import secrets
 import uuid
-from functools import wraps
 import time
-from pathlib import Path
-from flask import Flask, abort, flash, g, redirect, render_template, request, send_file, session, url_for
+from flask import Flask, abort, flash, g, jsonify, redirect, render_template, request, send_file, session, url_for
 from werkzeug.utils import secure_filename
 from config import BASE_DIR, settings
-from auth import Authentication, AuthError
-from storage import RuntimeDB, LocalRepository, SupabaseRepository, StoreError
+from browser_workspace import BrowserWorkspace, BrowserStateRequired, ReadTransport, InstanceRateLimits
 from extraction import extract_document, vision_status, MAX_PAGE_TEXT, MAX_TOTAL_TEXT
 from skills import candidates
 from analysis import analyze, compare_results, load_catalog, match_role
-from performance import PerformanceMetrics, UserTTLCache
+from performance import PerformanceMetrics
 
 
 def create_app(overrides=None):
@@ -24,16 +21,9 @@ def create_app(overrides=None):
     app.config.update(settings())
     if overrides:
         app.config.update(overrides)
-    if app.config.get('VERCEL_HOSTED'):
-        from serverless_runtime import SupabaseRuntime
-        runtime = SupabaseRuntime(app.config)
-    else:
-        runtime = RuntimeDB(app.config['DB_PATH'])
-    auth = Authentication(app.config, runtime)
-    app.extensions['runtime'] = runtime
-    app.extensions['authentication'] = auth
+    app.wsgi_app = ReadTransport(app.wsgi_app)
     app.extensions['metrics'] = PerformanceMetrics()
-    app.extensions['profile_cache'] = UserTTLCache(ttl=30)
+    app.extensions['rate_limits'] = InstanceRateLimits()
 
     def csrf_token():
         if 'csrf' not in session:
@@ -47,25 +37,31 @@ def create_app(overrides=None):
 
     @app.before_request
     def prepare():
-        # Static files must never create sessions or query profile/history storage.
+        # Static files must never create cookies or load browser workspace data.
         if request.endpoint == 'static':
-            g.user = g.repo = None
+            g.repo = None
             g.profile = {}
             return
-        if request.method == 'POST':
-            received = request.form.get('csrf_token', '')
-            if not received or not hmac.compare_digest(received, session.get('csrf', '')):
+        body = request.get_json(silent=True) if request.is_json else {}
+        body = body if isinstance(body,dict) else {}
+        if request.method == 'POST' or request.environ.get('resumelens.read_transport'):
+            received = request.form.get('csrf_token', '') or body.get('csrf_token','')
+            if not isinstance(received,str) or not received or not hmac.compare_digest(received, session.get('csrf', '')):
                 abort(400, description='The form expired. Reload the page and try again.')
-        g.user = auth.current(session.get('sid'))
-        g.repo = (SupabaseRepository(app.config, g.user, app.extensions['metrics']) if app.config['APP_MODE'] == 'supabase'
-                  else LocalRepository(runtime, g.user)) if g.user else None
-        # Sign-out remains available even if cloud profile/table setup is broken.
-        cache = app.extensions['profile_cache']
-        g.profile = cache.get(g.user['id']) if g.repo and request.endpoint != 'logout' else None
-        if g.repo and request.endpoint != 'logout' and g.profile is None:
-            g.profile = g.repo.profile()
-            cache.put(g.user['id'], g.profile)
-        g.profile = g.profile or {}
+        # Retire old authentication cookie contents; keep only anonymous UI state.
+        for key in list(session):
+            if key not in ('visitor','csrf','_flashes'): session.pop(key,None)
+        visitor=session.get('visitor')
+        if not isinstance(visitor,str) or len(visitor)!=43:
+            visitor=secrets.token_urlsafe(32)
+            session['visitor']=visitor
+        state=request.form.get('workspace_state','') or body.get('workspace_state','')
+        if request.endpoint=='clear_workspace': state=''  # Clear must work even for invalid/expired stored state.
+        if not isinstance(state,str): abort(400,description='Invalid browser workspace data.')
+        g.state_loaded=bool(state)
+        g.repo=BrowserWorkspace(app.config['SECRET_KEY'],visitor,state)
+        g.profile=g.repo.profile()
+        if g.repo.expired: flash('Your temporary browser workspace expired. Start a new analysis.','info')
 
     @app.before_request
     def start_timing():
@@ -73,11 +69,25 @@ def create_app(overrides=None):
 
     @app.context_processor
     def common():
-        return dict(csrf_token=csrf_token, asset_url=asset_url, mode=app.config['APP_MODE'], upload_max_mb=app.config['UPLOAD_MAX_MB'], hosted=app.config.get('VERCEL_HOSTED'), profile=g.get('profile', {}),
-                    signed_user=g.get('user'), role_catalog=load_catalog()['roles'])
+        repo=g.get('repo')
+        return dict(csrf_token=csrf_token, asset_url=asset_url, upload_max_mb=app.config['UPLOAD_MAX_MB'], hosted=app.config.get('VERCEL_HOSTED'), profile=g.get('profile', {}),
+                    workspace_payload={'owner':repo.owner,'state':repo.export(),'loaded':g.get('state_loaded',False)} if repo else None,
+                    role_catalog=load_catalog()['roles'])
 
     @app.after_request
     def headers(response):
+        if g.get('repo') and request.headers.get('X-Workspace-Client'):
+            state=g.repo.export()
+            if 300<=response.status_code<400 and response.headers.get('Location'):
+                location=response.headers['Location']
+                code=response.status_code if request.headers.get('X-Workspace-Client')=='test' else 200
+                response=jsonify(redirect=location,workspace_state=state)
+                response.status_code=code
+                response.headers['Location']=location
+            elif response.is_json and request.endpoint=='career_chat':
+                body=response.get_json()
+                body['workspace_state']=state
+                response.set_data(app.json.dumps(body))
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'DENY'
         response.headers['Referrer-Policy'] = 'same-origin'
@@ -86,15 +96,6 @@ def create_app(overrides=None):
         if hasattr(g, 'request_started'):
             app.extensions['metrics'].record('page:' + (request.endpoint or 'unknown'), time.perf_counter() - g.request_started)
         return response
-
-    def login_required(fn):
-        @wraps(fn)
-        def decorated(*args, **kwargs):
-            if not g.user:
-                flash('Sign in to access your private workspace.', 'info')
-                return redirect(url_for('login'))
-            return fn(*args, **kwargs)
-        return decorated
 
     def groups(records):
         latest = {}
@@ -110,61 +111,36 @@ def create_app(overrides=None):
             abort(404)
         record = g.repo.get(analysis_id)
         if not record:
+            if not g.state_loaded and request.method=='GET': raise BrowserStateRequired()
             abort(404)
         return record
 
+    @app.route('/login')
+    @app.route('/verify')
+    def retired_auth():
+        return redirect(url_for('dashboard'))
+
+    @app.route('/terms')
+    def terms_page():
+        return render_template('terms.html')
+
+    @app.route('/workspace/clear', methods=['POST'])
+    def clear_workspace():
+        if request.form.get('confirm')!='CLEAR': abort(400,description='Type CLEAR to remove this browser workspace.')
+        g.repo.clear()
+        session['visitor']=secrets.token_urlsafe(32)
+        g.repo=BrowserWorkspace(app.config['SECRET_KEY'],session['visitor'])
+        g.profile={}
+        flash('Temporary browser data cleared.','success')
+        return redirect(url_for('dashboard'))
+
     @app.route('/')
-    def index():
-        return redirect(url_for('dashboard' if g.user else 'login'))
-
-    @app.route('/login', methods=['GET', 'POST'])
-    def login():
-        if g.user:
-            return redirect(url_for('dashboard'))
-        if request.method == 'POST':
-            email = request.form.get('email', '').strip().lower()
-            try:
-                auth.send(email, request.remote_addr or 'local')
-                session['pending_email'] = email
-                flash('Code sent to your email.' if app.config['APP_MODE'] == 'supabase' else 'Local demo code printed in your VS Code terminal.', 'success')
-                return redirect(url_for('verify'))
-            except AuthError as exc:
-                flash(str(exc), 'error')
-        return render_template('login.html', email=request.form.get('email', ''))
-
-    @app.route('/verify', methods=['GET', 'POST'])
-    def verify():
-        if g.user:
-            return redirect(url_for('dashboard'))
-        email = session.get('pending_email')
-        if not email:
-            return redirect(url_for('login'))
-        if request.method == 'POST':
-            try:
-                sid = auth.verify(email, request.form.get('code', '').strip())
-                session.clear()  # Rotate state and CSRF token after authentication.
-                session['sid'] = sid
-                return redirect(url_for('dashboard'))
-            except AuthError as exc:
-                flash(str(exc), 'error')
-        return render_template('verify.html', email=email)
-
-    @app.route('/logout', methods=['POST'])
-    def logout():
-        if g.user:
-            app.extensions['profile_cache'].invalidate(g.user['id'])
-        auth.logout(session.get('sid'))
-        session.clear()
-        return redirect(url_for('login'))
-
     @app.route('/dashboard')
-    @login_required
     def dashboard():
         records = g.repo.list(); latest = groups(records)
         return render_template('dashboard.html', latest=latest, records=records, current=latest[0] if latest else None)
 
     @app.route('/upload', methods=['GET', 'POST'])
-    @login_required
     def upload():
         existing = groups(g.repo.list())
         if request.method == 'POST':
@@ -198,17 +174,17 @@ def create_app(overrides=None):
                 draft_id = str(uuid.uuid4())
                 draft = dict(extraction, series_id=series_id or str(uuid.uuid4()), title=title,
                              source_name=filename, job_description=jd)
-                runtime.save_draft(draft_id, g.user['id'], draft)
+                g.repo.save_draft(draft_id, draft)
                 return redirect(url_for('review', draft_id=draft_id))
             except ValueError as exc:
                 flash(str(exc), 'error')
         return render_template('upload.html', existing=existing, selected_series=request.args.get('series', ''), values=request.form)
 
     @app.route('/review/<draft_id>', methods=['GET', 'POST'])
-    @login_required
     def review(draft_id):
-        draft = runtime.get_draft(draft_id, g.user['id'])
+        draft = g.repo.get_draft(draft_id)
         if not draft:
+            if not g.state_loaded and request.method=='GET': raise BrowserStateRequired()
             saved = g.repo.get(draft_id)
             if saved:
                 return redirect(url_for('result', analysis_id=draft_id))
@@ -221,7 +197,7 @@ def create_app(overrides=None):
                 if any(not p['text'] or len(p['text']) > MAX_PAGE_TEXT for p in pages) or sum(len(p['text']) for p in pages) > MAX_TOTAL_TEXT:
                     raise ValueError('Keep every page non-empty and below the displayed text limits.')
                 draft['pages'] = pages
-                runtime.save_draft(draft_id, g.user['id'], draft)
+                g.repo.save_draft(draft_id, draft)
                 if request.form.get('action') == 'refresh':
                     flash('Skill list refreshed from your edited text. Confirm it below.', 'success')
                 else:
@@ -234,7 +210,7 @@ def create_app(overrides=None):
                     output = analyze(pages, selected, draft['job_description'])
                     output['extraction_notes'] = draft['notes']
                     g.repo.save(draft_id, draft['series_id'], draft['title'], draft['source_name'], draft['source_type'], output)
-                    runtime.delete_draft(draft_id, g.user['id'])
+                    g.repo.delete_draft(draft_id)
                     return redirect(url_for('result', analysis_id=draft_id))
             except ValueError as exc:
                 flash(str(exc), 'error')
@@ -244,7 +220,6 @@ def create_app(overrides=None):
         return render_template('review.html', draft=draft, draft_id=draft_id, found=found, selected=selected)
 
     @app.route('/results/<analysis_id>')
-    @login_required
     def result(analysis_id):
         record = owned_record(analysis_id)
         history = [r for r in g.repo.list() if r['series_id'] == record['series_id']]
@@ -254,7 +229,6 @@ def create_app(overrides=None):
                                comparison=compare_results(record, previous))
 
     @app.route('/roles')
-    @login_required
     def roles():
         analysis_id = request.args.get('analysis', '')
         record = owned_record(analysis_id) if analysis_id else None
@@ -272,7 +246,6 @@ def create_app(overrides=None):
         return render_template('roles.html', roles=role_list, record=record,categories=CATEGORIES,query=query,category=category)
 
     @app.route('/history')
-    @login_required
     def history():
         try:
             page = max(1, int(request.args.get('page', 1)))
@@ -286,7 +259,6 @@ def create_app(overrides=None):
                                has_previous=page > 1, has_next=start + page_size < len(summaries))
 
     @app.route('/history/delete', methods=['POST'])
-    @login_required
     def delete_history():
         sid = request.form.get('series_id', '')
         if not any(r['series_id'] == sid for r in g.repo.list()):
@@ -299,7 +271,6 @@ def create_app(overrides=None):
         return redirect(url_for('history'))
 
     @app.route('/profile', methods=['GET', 'POST'])
-    @login_required
     def profile_page():
         data = g.profile
         if request.method == 'POST':
@@ -310,13 +281,11 @@ def create_app(overrides=None):
                 flash('Choose a goal role from the list.', 'error')
             else:
                 g.repo.save_profile(data)
-                app.extensions['profile_cache'].invalidate(g.user['id'])
-                flash('Profile saved.', 'success')
+                flash('Browser preferences saved.', 'success')
                 return redirect(url_for('profile_page'))
         return render_template('profile.html', data=data)
 
     @app.route('/evaluation')
-    @login_required
     def evaluation():
         path = BASE_DIR / 'model/evaluation.json'
         metrics = json.loads(path.read_text(encoding='utf-8')) if path.exists() else None
@@ -325,13 +294,11 @@ def create_app(overrides=None):
         return render_template('evaluation.html', metrics=metrics, extraction_metrics=extraction_metrics)
 
     @app.route('/help')
-    @login_required
     def help_page():
         ready, message = vision_status(app.config)
         return render_template('help.html', vision_ready=ready, vision_message=message, vision_model=app.config['OLLAMA_MODEL'])
 
     @app.route('/results/<analysis_id>/download')
-    @login_required
     def download(analysis_id):
         record = owned_record(analysis_id)
         payload = json.dumps(record, indent=2, ensure_ascii=False).encode('utf-8')
@@ -339,16 +306,15 @@ def create_app(overrides=None):
                          download_name=f'resume_analysis_v{record["version"]}.json')
 
     @app.route('/samples/<filename>')
-    @login_required
     def sample_file(filename):
         allowed = {'sample_resume.pdf', 'sample_resume.png', 'sample_phone_photo.jpg', 'sample_scanned_resume.pdf', 'sample_resume_v2.pdf', 'sample_job_description.txt'}
         if filename not in allowed or (app.config.get('VERCEL_HOSTED') and filename=='sample_scanned_resume.pdf'):
             abort(404)
         return send_file(BASE_DIR / 'samples' / filename, as_attachment=True)
 
-    @app.errorhandler(StoreError)
-    def store_error(error):
-        return render_template('error.html', code=503, message=str(error)), 503
+    @app.errorhandler(BrowserStateRequired)
+    def restore_workspace(error):
+        return render_template('workspace_restore.html')
 
     @app.errorhandler(413)
     def too_big(error):
@@ -364,7 +330,7 @@ def create_app(overrides=None):
         return render_template('error.html', code=500, message='The operation failed. Check the terminal, then try again.'), 500
 
     from career_routes import register_career_routes
-    register_career_routes(app,login_required,owned_record)
+    register_career_routes(app,owned_record)
     return app
 
 

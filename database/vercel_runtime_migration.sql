@@ -1,3 +1,5 @@
+-- OBSOLETE: retained for historical account deployments only.
+-- Anonymous ResumeLens does not use or require this migration.
 -- Run once in Supabase SQL Editor. No public tables or existing rows replaced.
 -- Used ONLY through a server-held Postgres connection, not the browser/Data API.
 begin;

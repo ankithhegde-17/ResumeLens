@@ -1,21 +1,24 @@
-{% from 'components.html' import icon, brand, logout_form with context %}
+{% from 'components.html' import icon, brand with context %}
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b1f3a">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>{% block title %}Workspace{% endblock %} · ResumeLens</title>
   <link rel="icon" href="{{ asset_url('favicon.ico') }}" sizes="16x16 32x32 48x48">
   <link rel="icon" href="{{ asset_url('favicon.png') }}" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="{{ asset_url('apple-touch-icon.png') }}" sizes="180x180">
   <link rel="stylesheet" href="{{ asset_url('style.css') }}">
+  <script defer src="{{ asset_url('workspace.js') }}"></script>
   <script defer src="{{ asset_url('script.js') }}"></script>
   <script defer src="{{ asset_url('career.js') }}"></script>
 </head>
-<body class="{% if signed_user %}app-layout{% else %}auth-layout{% endif %}">
+<body class="app-layout" data-hosted="{{ 'true' if hosted else 'false' }}">
+{% if workspace_payload %}<script type="application/json" id="workspace-state">{{ workspace_payload|tojson }}</script>{% endif %}
+<noscript><p class="alert">JavaScript and browser storage are required for temporary analyses and progress. Career guides remain readable without them.</p></noscript>
 <a class="skip-link" href="#main-content">Skip to content</a>
-{% if signed_user %}
 <button class="mobile-menu-toggle" type="button" aria-controls="app-sidebar" aria-expanded="false">
   {{ icon('menu') }}<span class="sr-only">Open navigation menu</span>
 </button>
@@ -36,28 +39,24 @@
   </nav>
   <div class="sidebar-account">
     <a class="sidebar-user" href="{{ url_for('profile_page') }}"{% if request.endpoint == 'profile_page' %} aria-current="page"{% endif %}>
-      <span class="avatar">{{ (profile.get('display_name') or signed_user.email)[0]|upper }}</span>
-      <span>{{ profile.get('display_name') or 'Student workspace' }}<small>{{ signed_user.email }}</small></span>
+      <span class="avatar">{{ (profile.get('display_name') or 'Browser')[0]|upper }}</span>
+      <span>Browser preferences<small>No account · This browser only</small></span>
     </a>
-    {{ logout_form() }}
   </div>
 </aside>
 <div class="workspace">
   <header class="topbar">
     <div><a class="breadcrumb" href="{{ url_for('dashboard') }}">Workspace</a><span class="slash">/</span>{% block crumb %}Overview{% endblock %}</div>
-    <div class="top-actions"><button class="career-ai-toggle" type="button" aria-controls="career-ai-panel" aria-expanded="false">{{ icon('careers') }}<span>R. Career AI</span></button><span class="mode-pill">{{ 'Cloud account' if mode == 'supabase' else 'Demo mode' }}</span>{{ logout_form('header-signout') }}</div>
+    <div class="top-actions"><button class="career-ai-toggle" type="button" aria-controls="career-ai-panel" aria-expanded="false">{{ icon('careers') }}<span>R. Career AI</span></button><span class="mode-pill">Browser workspace</span></div>
   </header>
-{% endif %}
-  <main id="main-content" tabindex="-1" class="{% if signed_user %}main-content{% else %}auth-main{% endif %}">
+  <main id="main-content" tabindex="-1" class="main-content">
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, message in messages %}<div class="alert {{ category }}" role="{{ 'alert' if category == 'error' else 'status' }}">{{ message }}</div>{% endfor %}
     {% endwith %}
     {% block content %}{% endblock %}
   </main>
-{% if signed_user %}
-  <footer class="app-footer">ResumeLens · Multimodal career guide<span>Skill coverage is guidance, not a hiring guarantee.</span></footer>
+  {% include 'footer.html' %}
 </div>
 {% include 'career_chat.html' %}
-{% endif %}
 </body>
 </html>

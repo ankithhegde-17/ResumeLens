@@ -1,4 +1,8 @@
-# Connect real email OTP and cloud history
+# Obsolete: historical email OTP and cloud history setup
+
+Current ResumeLens is authentication-free and does not use Supabase. Do not
+follow this historical guide for current deployment; use README.md and
+docs/VERCEL_DEPLOYMENT.md. Existing Supabase data is retained but not exposed.
 
 The app is already integrated with Supabase Auth and its REST database API. You supply configuration after downloading. No paid AI API key or service-role key is needed.
 
