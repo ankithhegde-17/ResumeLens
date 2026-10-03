@@ -59,6 +59,10 @@ Read-only baseline at https://resumelens.prayogmanch.in: sampled TTFB 62–74 ms
 
 Production Lighthouse baseline: performance 65, FCP 1,078 ms, LCP 1,315 ms, CLS 0.796, TBT 432 ms. Production layout shift requires post-deployment measurement; do not claim local results prove it is resolved.
 
+Post-deployment check (October 3): the optimized workspace script and fingerprinted assets are live. Production Lighthouse performance is 75, FCP 1,154 ms, LCP 1,222 ms, CLS 0.796 and TBT 0 ms. Warmed page samples across homepage, dashboard, upload, careers, career detail and skill detail measured TTFB 60–71 ms and DOMContentLoaded 289–323 ms. Browser navigation uses one state-carrying POST. These are individual lab runs, not field metrics or guaranteed cold-start results.
+
+Remaining issue: the production layout shift is not fixed. An uncached 390 px browser check with 150 ms network latency reproduced CLS 0.776 at stylesheet completion, with the body and statistic cards attributed as sources. A cached check recorded no shifts. The stylesheet is a normal head stylesheet link in the served HTML; the precise reason for the early paint remains unconfirmed. Do not infer that the local CLS 0 result resolves this production issue. Reports are saved in ignored output/playwright/lighthouse-production-after.json.
+
 Isolated historical/current hosted-mode local builds, Lighthouse mobile simulation: performance 94 → 96; FCP 1,909 → 2,084 ms; LCP 2,134 → 2,159 ms; CLS 0 → 0; TBT 0 → 0. Single-run noise prevents claiming faster LCP. TBT is a lab measure, not field INP. A separate non-isolated local run scored 91. Reports/screenshots remain in ignored output/playwright. Historical benchmark copy/helper servers were removed/stopped; source history remains recoverable from Git. Main local server remains running.
 
 ## API/data conclusions
