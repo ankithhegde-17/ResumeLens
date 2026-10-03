@@ -10,6 +10,15 @@
   <link rel="icon" href="{{ asset_url('favicon.ico') }}" sizes="16x16 32x32 48x48">
   <link rel="icon" href="{{ asset_url('favicon.png') }}" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="{{ asset_url('apple-touch-icon.png') }}" sizes="180x180">
+  <script>
+    (() => {
+      let preference = 'system';
+      try { preference = localStorage.getItem('resumelens-theme') || 'system'; } catch (_) {}
+      if (!['light', 'dark', 'system'].includes(preference)) preference = 'system';
+      document.documentElement.dataset.theme = preference === 'system'
+        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : preference;
+    })();
+  </script>
   <link rel="stylesheet" href="{{ asset_url('style.css') }}">
   <script defer src="{{ asset_url('workspace.js') }}"></script>
   <script defer src="{{ asset_url('script.js') }}"></script>
@@ -47,7 +56,7 @@
       {{ icon('menu') }}<span class="sr-only">Open navigation menu</span>
     </button>
     <div><a class="breadcrumb" href="{{ url_for('dashboard') }}">Workspace</a><span class="slash">/</span>{% block crumb %}Overview{% endblock %}</div>
-    <div class="top-actions"><button class="career-ai-toggle" type="button" aria-controls="career-ai-panel" aria-expanded="false">{{ icon('careers') }}<span>R. Career AI</span></button><span class="mode-pill">Browser workspace</span></div>
+    <div class="top-actions"><button class="career-ai-toggle" type="button" aria-controls="career-ai-panel" aria-expanded="false">{{ icon('careers') }}<span>R. Career AI</span></button></div>
   </header>
   <main id="main-content" tabindex="-1" class="main-content">
     {% with messages = get_flashed_messages(with_categories=true) %}

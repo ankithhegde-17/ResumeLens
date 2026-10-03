@@ -56,7 +56,9 @@ def register_career_routes(app, owned_record):
                                detected=any(s['name']==skill['name'] for s in record['result']['skills']) if record else False,
                                status=progress.get(slug,'not_started'),hours=hours,progress_available=available,
                                weeks=tuple(round(n/hours,1) for n in skill['hours']), resources=resources,
-                               guides=SKILL_GUIDES,filters=dict(cost=cost,level=level,format=kind))
+                               guides=SKILL_GUIDES,filters=dict(cost=cost,level=level,format=kind),
+                               related_careers=[item for item in BY_ID.values() if skill['name'] in
+                                                item['core'] + item['supporting'] + item['tools'] + item['fundamentals'] + item['advanced']])
 
     @app.route('/learning/progress',methods=['POST'])
     def learning_progress():

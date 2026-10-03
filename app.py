@@ -104,7 +104,8 @@ def create_app(overrides=None):
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'DENY'
         response.headers['Referrer-Policy'] = 'same-origin'
-        response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+        # Allow only the exact early appearance initializer, not arbitrary inline JS.
+        response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self' 'sha256-dwPoMm1GbJJod5KxqugXSbhGObxG59VSQrFKebdn+wI='; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
         response.headers['Cache-Control'] = ('public, max-age=31536000, immutable' if request.args.get('v') else 'public, max-age=3600') if request.endpoint == 'static' else 'no-store'
         if hasattr(g, 'request_started'):
             elapsed = time.perf_counter() - g.request_started

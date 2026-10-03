@@ -1,6 +1,33 @@
 /* Progressive enhancements; Flask remains responsible for validation and security. */
 document.documentElement.classList.add('js');
+// Keep one OS listener even when browser-workspace navigation replaces the document.
+if (!window.resumeLensAppearance) {
+  const media = window.matchMedia('(prefers-color-scheme: dark)');
+  const valid = value => ['light', 'dark', 'system'].includes(value) ? value : 'system';
+  let preference = 'system';
+  try { preference = valid(localStorage.getItem('resumelens-theme')); } catch (_) {}
+  const apply = () => {
+    const resolved = preference === 'system' ? (media.matches ? 'dark' : 'light') : preference;
+    document.documentElement.dataset.theme = resolved;
+    document.querySelectorAll('input[name="appearance"]').forEach(input => { input.checked = input.value === preference; });
+    const status = document.querySelector('#appearance-status');
+    if (status) status.textContent = `${preference === 'system' ? 'Automatic' : preference === 'dark' ? 'Dark' : 'Light'} selected · ${resolved} appearance`;
+  };
+  media.addEventListener('change', () => { if (preference === 'system') apply(); });
+  window.addEventListener('storage', event => {
+    if (event.key === 'resumelens-theme' || event.key === null) { preference = valid(event.newValue); apply(); }
+  });
+  window.resumeLensAppearance = { apply, select(value) {
+    preference = valid(value);
+    try { localStorage.setItem('resumelens-theme', preference); } catch (_) {}
+    apply();
+  } };
+}
 document.addEventListener('DOMContentLoaded', () => {
+  window.resumeLensAppearance.apply();
+  document.querySelectorAll('input[name="appearance"]').forEach(input => {
+    input.addEventListener('change', () => window.resumeLensAppearance.select(input.value));
+  });
   const toggle = document.querySelector('.mobile-menu-toggle');
   const sidebar = document.querySelector('#app-sidebar');
   const scrim = document.querySelector('.sidebar-scrim');

@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const log = panel.querySelector('.career-ai-messages');
   const status = panel.querySelector('.ai-status');
   const retry = panel.querySelector('.ai-retry');
+  const quick = panel.querySelector('.career-ai-quick');
   let busy = false;
   let lastMessage = '';
   const mobile = window.matchMedia('(max-width:600px)');
@@ -68,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     data.set('message', message);
     if (action) data.set('action', action);
     if (!action && !isRetry) {
+      quick.hidden = true;
       append(message, true);
       // Clear immediately, including failed sends; Retry retains lastMessage.
       input.value = '';
@@ -82,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const result = await response.json();
       window.ResumeLensWorkspace?.save(result.workspace_state,result.workspace_has_data);
       if (!response.ok) throw new Error(result.error || 'Career AI is unavailable. Try again later.');
-      if (action === 'new') { log.replaceChildren(); input.value = ''; }
+      if (action === 'new') { log.replaceChildren(); input.value = ''; quick.hidden = false; }
       append(result.answer);
     } catch (error) {
       append(error.name === 'AbortError' ? 'Career AI took too long. You can retry; curated guides still work.' : (error instanceof SyntaxError ? 'Try later. Career AI is unavailable.' : error.message));
