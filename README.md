@@ -4,6 +4,11 @@ Explainable AI-based resume analysis and career guidance. Open `/` and use the
 dashboard directly—no account, email, OTP, login or Supabase setup is required.
 The existing blue/white glass UI, branding and responsive layouts are retained.
 
+Performance audit and measured limitations: [docs/PERFORMANCE_AUDIT.md](docs/PERFORMANCE_AUDIT.md).
+Optional `PERFORMANCE_DIAGNOSTICS=true` enables privacy-safe stage/route/template
+timing logs and Server-Timing headers. Leave it unset/false in normal production.
+Run `python scripts/performance_audit.py` for isolated local measurements.
+
 ## Features
 
 - PDF direct-text extraction before OCR; local images/scans through RapidOCR

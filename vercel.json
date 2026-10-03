@@ -2,10 +2,16 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "flask",
   "buildCommand": "python scripts/vercel_build.py",
+  "headers": [
+    {
+      "source": "/static/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=86400" }]
+    }
+  ],
   "functions": {
     "app.py": {
       "maxDuration": 60,
-      "excludeFiles": "{tests/**,docs/**,output/**,.venv/**,venv/**,instance/**,*.log,static/login-hero.png}"
+      "excludeFiles": "{tests/**,docs/**,output/**,.venv/**,venv/**,instance/**,*.log,static/login-hero.*,static/favicon.svg}"
     }
   }
 }

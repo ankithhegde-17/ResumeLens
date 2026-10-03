@@ -57,17 +57,26 @@ class BrowserWorkspace:
         raw=json.dumps(self.data,ensure_ascii=False).encode()
         if len(raw)>MAX_STATE_BYTES:
             raise ValueError('This browser workspace is full. Export or delete older analyses before adding another resume.')
-        return self.signer.dumps(self.data)
+        if getattr(self, '_export_raw', None) != raw:
+            self._export_token = self.signer.dumps(self.data)
+            self._export_raw = raw
+        return self._export_token
 
     def profile(self): return copy.deepcopy(self.data['preferences'])
+    def has_data(self):
+        return bool(self.data['records'] or self.data['drafts'] or self.data['preferences'] or self.data['progress'] or self.data['chat'] or self.data['hours'] != 10)
     def save_profile(self, value): self.data['preferences']=dict(value)
     def learning_state(self): return dict(self.data['progress']), self.data['hours']
     def save_learning(self, slug, status): self.data['progress'][slug]=status
     def save_schedule(self, hours): self.data['hours']=hours
     def list(self): return sorted(copy.deepcopy(self.data['records']),key=lambda r:(r['created_at'],r['version']),reverse=True)
     def all_summaries(self):
-        return [dict(r,result={'roles':r['result']['roles'][:1], 'skills':[None]*len(r['result']['skills'])}) for r in self.list()]
-    def get(self, analysis_id): return next((r for r in self.list() if r['id']==analysis_id),None)
+        # Do not copy every page/evidence/rubric just to render a short list.
+        return [dict({k:v for k,v in r.items() if k!='result'},result={'roles':copy.deepcopy(r['result']['roles'][:1]), 'skills':[None]*len(r['result']['skills'])})
+                for r in sorted(self.data['records'],key=lambda r:(r['created_at'],r['version']),reverse=True)]
+    def get(self, analysis_id):
+        row = next((r for r in self.data['records'] if r['id']==analysis_id),None)
+        return copy.deepcopy(row) if row else None
     def save(self, draft_id, series_id, title, source_name, source_type, result):
         existing=self.get(draft_id)
         if existing: return existing

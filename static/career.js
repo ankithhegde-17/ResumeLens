@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const response = await fetch(form.action, {method: 'POST', body: data, credentials: 'same-origin', signal: controller.signal, headers:{'X-Workspace-Client':'1'}});
       const result = await response.json();
-      window.ResumeLensWorkspace?.save(result.workspace_state);
+      window.ResumeLensWorkspace?.save(result.workspace_state,result.workspace_has_data);
       if (!response.ok) throw new Error(result.error || 'Career AI is unavailable. Try again later.');
       if (action === 'new') { log.replaceChildren(); input.value = ''; }
       append(result.answer);

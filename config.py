@@ -22,6 +22,7 @@ def settings():
     engine='ocr' if hosted else os.getenv('EXTRACTION_ENGINE','auto').lower()
     if engine not in ('auto','ocr','vlm'): raise ValueError('EXTRACTION_ENGINE must be auto, ocr or vlm.')
     return dict(SECRET_KEY=key,VERCEL_HOSTED=hosted,APP_MODE='anonymous',EXTRACTION_ENGINE=engine,
+        PERFORMANCE_DIAGNOSTICS=os.getenv('PERFORMANCE_DIAGNOSTICS','false').lower()=='true',
         OCR_SERVICE_URL=os.getenv('OCR_SERVICE_URL','').rstrip('/'),OCR_SERVICE_SECRET=os.getenv('OCR_SERVICE_SECRET','').strip(),
         UPLOAD_MAX_MB=3 if hosted else 10,MAX_CONTENT_LENGTH=(4 if hosted else 13)*1024*1024,
         OLLAMA_URL=os.getenv('OLLAMA_URL','http://127.0.0.1:11434').rstrip('/'),

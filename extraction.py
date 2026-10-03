@@ -5,12 +5,8 @@ import json
 import warnings
 import time
 from functools import lru_cache
-import fitz
-import numpy as np
 import requests
-from PIL import Image, ImageOps, UnidentifiedImageError
 
-Image.MAX_IMAGE_PIXELS = 20_000_000
 MAX_PAGES = 5
 MAX_PAGE_TEXT = 12000
 MAX_TOTAL_TEXT = 35000
@@ -40,6 +36,7 @@ def ocr_engine():
 
 
 def read_ocr(image):
+    import numpy as np
     rows, _ = ocr_engine()(np.asarray(image))
     if not rows:
         raise ValueError('No readable text found. Use a sharper, upright photo with the whole page visible.')
@@ -76,6 +73,8 @@ def read_vision(image, cfg):
 
 
 def normalize_image(blob):
+    from PIL import Image, ImageOps, UnidentifiedImageError
+    Image.MAX_IMAGE_PIXELS = 20_000_000
     try:
         with warnings.catch_warnings():
             warnings.simplefilter('error', Image.DecompressionBombWarning)
@@ -99,6 +98,8 @@ def extract_document(blob, filename, cfg, requested='auto', observer=None):
     extension = filename.rsplit('.', 1)[-1].lower()
     if extension not in {'pdf', 'png', 'jpg', 'jpeg'}:
         raise ValueError('Choose a PDF, JPG or PNG resume.')
+    if extension == 'pdf':
+        import pymupdf as fitz  # PDF support is not needed to render pages.
     engine = cfg['EXTRACTION_ENGINE'] if requested == 'default' else requested
     if cfg.get('VERCEL_HOSTED'):
         engine = 'ocr'
@@ -174,6 +175,7 @@ def extract_document(blob, filename, cfg, requested='auto', observer=None):
                     if len(text) >= 60 and engine != 'vlm':
                         pages.append(dict(number=number, text=text, engine='PDF text', confidence=None))
                     else:
+                        from PIL import Image
                         if page.rect.width <= 0 or page.rect.height <= 0:
                             raise ValueError('This PDF has an invalid page size.')
                         scale = min(2.0, 2200 / max(page.rect.width, page.rect.height))

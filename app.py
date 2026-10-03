@@ -1,5 +1,6 @@
 """Beginner-friendly Flask routes. Run with: python app.py"""
 import hmac
+import hashlib
 import io
 import json
 import os
@@ -12,8 +13,9 @@ from config import BASE_DIR, settings
 from browser_workspace import BrowserWorkspace, BrowserStateRequired, ReadTransport, InstanceRateLimits
 from extraction import extract_document, vision_status, MAX_PAGE_TEXT, MAX_TOTAL_TEXT
 from skills import candidates
-from analysis import analyze, compare_results, load_catalog, match_role
+from analysis import analyze, compare_results, load_catalog, match_role, evaluation_data
 from performance import PerformanceMetrics
+from flask import before_render_template, template_rendered
 
 
 def create_app(overrides=None):
@@ -22,8 +24,19 @@ def create_app(overrides=None):
     if overrides:
         app.config.update(overrides)
     app.wsgi_app = ReadTransport(app.wsgi_app)
-    app.extensions['metrics'] = PerformanceMetrics()
+    app.extensions['metrics'] = PerformanceMetrics(diagnostics=app.config.get('PERFORMANCE_DIAGNOSTICS',False))
     app.extensions['rate_limits'] = InstanceRateLimits()
+    # Content fingerprints survive redeploys; unchanged assets stay browser-cached.
+    asset_versions = {}
+
+    def template_start(sender, **extra):
+        g.template_started = time.perf_counter()
+
+    def template_end(sender, template, **extra):
+        app.extensions['metrics'].record('template:' + (template.name or 'inline'), time.perf_counter() - g.template_started)
+
+    before_render_template.connect(template_start, app, weak=False)
+    template_rendered.connect(template_end, app, weak=False)
 
     def csrf_token():
         if 'csrf' not in session:
@@ -31,12 +44,15 @@ def create_app(overrides=None):
         return session['csrf']
 
     def asset_url(filename):
-        path = BASE_DIR / 'static' / filename
-        version = int(path.stat().st_mtime) if path.exists() else 0
+        if filename not in asset_versions:
+            path = BASE_DIR / 'static' / filename
+            asset_versions[filename] = hashlib.sha256(path.read_bytes()).hexdigest()[:12] if path.exists() else 'missing'
+        version = asset_versions[filename]
         return url_for('static', filename=filename, v=version)
 
     @app.before_request
     def prepare():
+        g.request_started = time.perf_counter()
         # Static files must never create cookies or load browser workspace data.
         if request.endpoint == 'static':
             g.repo = None
@@ -63,16 +79,12 @@ def create_app(overrides=None):
         g.profile=g.repo.profile()
         if g.repo.expired: flash('Your temporary browser workspace expired. Start a new analysis.','info')
 
-    @app.before_request
-    def start_timing():
-        g.request_started = time.perf_counter()
-
     @app.context_processor
     def common():
         repo=g.get('repo')
         return dict(csrf_token=csrf_token, asset_url=asset_url, upload_max_mb=app.config['UPLOAD_MAX_MB'], hosted=app.config.get('VERCEL_HOSTED'), profile=g.get('profile', {}),
-                    workspace_payload={'owner':repo.owner,'state':repo.export(),'loaded':g.get('state_loaded',False)} if repo else None,
-                    role_catalog=load_catalog()['roles'])
+                    workspace_payload={'owner':repo.owner,'state':repo.export(),'loaded':g.get('state_loaded',False),'has_data':repo.has_data()} if repo else None,
+                    role_catalog=load_catalog()['roles'] if request.endpoint in ('dashboard', 'profile_page') else [])
 
     @app.after_request
     def headers(response):
@@ -81,20 +93,24 @@ def create_app(overrides=None):
             if 300<=response.status_code<400 and response.headers.get('Location'):
                 location=response.headers['Location']
                 code=response.status_code if request.headers.get('X-Workspace-Client')=='test' else 200
-                response=jsonify(redirect=location,workspace_state=state)
+                response=jsonify(redirect=location,workspace_state=state,workspace_has_data=g.repo.has_data())
                 response.status_code=code
                 response.headers['Location']=location
             elif response.is_json and request.endpoint=='career_chat':
                 body=response.get_json()
                 body['workspace_state']=state
+                body['workspace_has_data']=g.repo.has_data()
                 response.set_data(app.json.dumps(body))
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'DENY'
         response.headers['Referrer-Policy'] = 'same-origin'
         response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
-        response.headers['Cache-Control'] = 'no-store' if request.endpoint != 'static' else 'public, max-age=31536000, immutable'
+        response.headers['Cache-Control'] = ('public, max-age=31536000, immutable' if request.args.get('v') else 'public, max-age=3600') if request.endpoint == 'static' else 'no-store'
         if hasattr(g, 'request_started'):
-            app.extensions['metrics'].record('page:' + (request.endpoint or 'unknown'), time.perf_counter() - g.request_started)
+            elapsed = time.perf_counter() - g.request_started
+            app.extensions['metrics'].record('page:' + (request.endpoint or 'unknown'), elapsed)
+            if app.config.get('PERFORMANCE_DIAGNOSTICS'):
+                response.headers['Server-Timing'] = f'app;dur={elapsed*1000:.2f}'
         return response
 
     def groups(records):
@@ -207,7 +223,9 @@ def create_app(overrides=None):
                     supported = {s['name'] for s in candidates(pages)}
                     if not set(selected).issubset(supported):
                         raise ValueError('The text changed. Refresh the skill list before analyzing.')
+                    analysis_started = time.perf_counter()
                     output = analyze(pages, selected, draft['job_description'])
+                    app.extensions['metrics'].record('inference:analysis', time.perf_counter()-analysis_started)
                     output['extraction_notes'] = draft['notes']
                     g.repo.save(draft_id, draft['series_id'], draft['title'], draft['source_name'], draft['source_type'], output)
                     g.repo.delete_draft(draft_id)
@@ -228,6 +246,7 @@ def create_app(overrides=None):
                                is_current=record['version'] == max(r['version'] for r in history),
                                comparison=compare_results(record, previous))
 
+    @app.route('/careers')
     @app.route('/roles')
     def roles():
         analysis_id = request.args.get('analysis', '')
@@ -287,10 +306,8 @@ def create_app(overrides=None):
 
     @app.route('/evaluation')
     def evaluation():
-        path = BASE_DIR / 'model/evaluation.json'
-        metrics = json.loads(path.read_text(encoding='utf-8')) if path.exists() else None
-        extraction_path = BASE_DIR / 'model/extraction_evaluation.json'
-        extraction_metrics = json.loads(extraction_path.read_text(encoding='utf-8')) if extraction_path.exists() else None
+        metrics = evaluation_data('evaluation.json')
+        extraction_metrics = evaluation_data('extraction_evaluation.json')
         return render_template('evaluation.html', metrics=metrics, extraction_metrics=extraction_metrics)
 
     @app.route('/help')

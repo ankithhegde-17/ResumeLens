@@ -1,7 +1,7 @@
 """The score is an explicit skill rubric; ML is a separate educational signal."""
 import json
 from functools import lru_cache
-import joblib
+from threading import Lock
 from config import BASE_DIR
 from skills import candidates, names_from_text
 
@@ -23,12 +23,33 @@ def load_catalog():
     return catalog
 
 
+_model_lock = Lock()
+
+
 @lru_cache(maxsize=1)
-def model_bundle():
+def _load_model_bundle():
+    import joblib  # Only analysis needs the model loader/numerical dependencies.
     path = BASE_DIR / 'model/role_classifier.joblib'
     if not path.exists():
         raise ValueError('Model missing. Run python train_model.py, then restart the app.')
     return joblib.load(path)
+
+
+def model_bundle():
+    # Concurrent first analyses must not deserialize the same model twice.
+    with _model_lock:
+        return _load_model_bundle()
+
+
+model_bundle.cache_clear = _load_model_bundle.cache_clear
+model_bundle.cache_info = _load_model_bundle.cache_info
+
+
+@lru_cache(maxsize=4)
+def evaluation_data(filename):
+    """Immutable deployment data; restart/redeploy after regenerating metrics."""
+    path = BASE_DIR / 'model' / filename
+    return json.loads(path.read_text(encoding='utf-8')) if path.exists() else None
 
 
 def match_role(role, skills, learning):

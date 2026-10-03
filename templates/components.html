@@ -17,7 +17,7 @@
 
 {% macro brand(destination, dark=false) -%}
 <a class="brand{% if dark %} dark-brand{% endif %}" href="{{ url_for(destination) }}">
-  <span class="brand-symbol"><img src="{{ asset_url('logo.png') }}" alt="" width="42" height="44"></span>
+  <span class="brand-symbol"><img src="{{ asset_url('logo.png') }}" alt="" width="42" height="44" decoding="async"></span>
   <span>ResumeLens<small>MULTIMODAL CAREER GUIDE</small></span>
 </a>
 {%- endmacro %}

@@ -1,5 +1,6 @@
 """Small route extension; current routes and saved analysis snapshots stay intact."""
 import hashlib
+import time
 from flask import abort, flash, g, jsonify, redirect, render_template, request, url_for
 from analysis import load_catalog, match_role
 from career_data import BY_SLUG, BY_ID, DISCLAIMER, alignment_label, personalize
@@ -118,7 +119,9 @@ def register_career_routes(app, owned_record):
                            roadmap=[dict(skill=s['name'],detected=s['detected'],progress=s['status'],effort_hours=s['hours']) for s in plan['steps']],
                            next_step=plan['next_step']['name'] if plan['next_step'] else 'Review and build projects')
         history=g.repo.chat()
+        started = time.perf_counter()
         try: answer=gemini_reply(app.config,message,context,history)
         except AssistantError as exc: return jsonify(error=str(exc)),exc.status
+        finally: app.extensions['metrics'].record('inference:gemini',time.perf_counter()-started)
         g.repo.save_chat(history+[dict(role='user',text=message),dict(role='assistant',text=answer)])
         return jsonify(answer=answer,source='gemini')
