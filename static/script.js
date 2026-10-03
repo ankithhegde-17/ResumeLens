@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const scrim = document.querySelector('.sidebar-scrim');
   const workspace = document.querySelector('.workspace');
   const close = document.querySelector('.sidebar-close');
-  const mobile = window.matchMedia('(max-width: 900px)');
+  const mobile = window.matchMedia('(max-width: 1023px)');
 
   const setMenu = (open, restoreFocus = false) => {
     if (!toggle || !sidebar || !scrim) return;
